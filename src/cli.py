@@ -1,4 +1,4 @@
-"""Command-line interface for the contact-cleaning pipeline."""
+"""Command-line interface for the contact-normalization pipeline."""
 
 import argparse
 import sys
@@ -10,10 +10,14 @@ from exceptions import ContactCleanerError, FileProcessingError
 from utils import ensure_directory_exists
 
 
-def main():
-    """Run the contact-cleaning pipeline from the command line."""
+def main() -> None:
+    """Run the contact-normalization pipeline from the command line."""
     parser = argparse.ArgumentParser(
-        description="Normalize Iranian contact data and select a preferred valid mobile number."
+        prog="contact-cleaner",
+        description=(
+            "Normalize Iranian contact data and select one preferred valid "
+            "mobile number per contact."
+        ),
     )
     parser.add_argument("input", help="Input CSV file path")
     parser.add_argument("output", help="Output CSV file path")
@@ -55,11 +59,15 @@ def main():
 
 
 def _read_input_file(file_path: str) -> pd.DataFrame:
-    """Read and validate the input CSV file."""
+    """Read a UTF-8 CSV and validate the minimum contact schema.
+
+    ``utf-8-sig`` accepts both ordinary UTF-8 and UTF-8 files carrying a BOM,
+    which is common when contact data is exported through spreadsheet tools.
+    """
     try:
         df = pd.read_csv(
             file_path,
-            encoding="utf-8",
+            encoding="utf-8-sig",
             low_memory=False,
             dtype=str,
             keep_default_na=False,
