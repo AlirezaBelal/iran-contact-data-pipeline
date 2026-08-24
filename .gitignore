@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual environment
+# Virtual environments
 .venv/
 venv/
 env/
@@ -13,22 +13,26 @@ dist/
 build/
 *.egg-info/
 
-# IDE specific files
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Logs and databases
+# Logs and local databases
 *.log
 *.sqlite3
+*.db
 
-# Operating System files
+# Local datasets and generated outputs
+*.csv
+*.xlsx
+*.xls
+!examples/
+!examples/*.csv
+cleaned_contacts.csv
+outputs/
+
+# Operating system files
 .DS_Store
 Thumbs.db
-
-# Specific project files to ignore
-*.xlsx
-*.csv
-!sample_contacts.csv
-cleaned_contacts.csv
