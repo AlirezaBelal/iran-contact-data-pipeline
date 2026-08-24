@@ -1,4 +1,4 @@
-"""Command line interface for the contact cleaner application."""
+"""Command-line interface for the contact-cleaning pipeline."""
 
 import argparse
 import sys
@@ -11,84 +11,79 @@ from utils import ensure_directory_exists
 
 
 def main():
-    """
-    Main entry point for the contact cleaner CLI.
-
-    Handles command-line arguments and runs the contact cleaning process.
-    """
-    parser = argparse.ArgumentParser(description="Clean and normalize contact information.")
+    """Run the contact-cleaning pipeline from the command line."""
+    parser = argparse.ArgumentParser(
+        description="Normalize Iranian contact data and select a preferred valid mobile number."
+    )
     parser.add_argument("input", help="Input CSV file path")
     parser.add_argument("output", help="Output CSV file path")
-
     args = parser.parse_args()
 
     try:
-        # Read input CSV
         contacts_df = _read_input_file(args.input)
+        input_count = len(contacts_df)
 
-        # Process contacts
         print("Processing contacts...")
         cleaned_df = ContactProcessor.clean_contacts(contacts_df)
 
-        # Ensure output directory exists
         ensure_directory_exists(args.output)
+        cleaned_df.to_csv(args.output, index=False, encoding="utf-8-sig")
 
-        # Save cleaned contacts
-        cleaned_df.to_csv(args.output, index=False)
+        output_count = len(cleaned_df)
+        rejected_count = input_count - output_count
 
         print(f"Cleaned contacts saved to {args.output}")
-        print(f"Total contacts processed: {len(cleaned_df)}")
+        print(f"Input rows: {input_count}")
+        print(f"Output rows with a valid mobile number: {output_count}")
+        print(f"Rows without a valid mobile number: {rejected_count}")
 
     except FileNotFoundError:
-        print(f"Error: Input file not found - {args.input}", file=sys.stderr)
+        print(f"Error: input file not found - {args.input}", file=sys.stderr)
         sys.exit(1)
     except PermissionError:
-        print(f"Error: Permission denied when accessing {args.input} or {args.output}", file=sys.stderr)
+        print(
+            f"Error: permission denied when accessing {args.input} or {args.output}",
+            file=sys.stderr,
+        )
         sys.exit(1)
-    except ContactCleanerError as e:
-        print(f"Contact cleaning error: {e}", file=sys.stderr)
+    except ContactCleanerError as exc:
+        print(f"Contact cleaning error: {exc}", file=sys.stderr)
         sys.exit(1)
-    except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
+    except Exception as exc:
+        print(f"Unexpected error: {exc}", file=sys.stderr)
         sys.exit(1)
 
 
 def _read_input_file(file_path: str) -> pd.DataFrame:
-    """
-    Read and validate the input CSV file.
-
-    Args:
-        file_path (str): Path to the input CSV file.
-
-    Returns:
-        pd.DataFrame: Loaded DataFrame with contact information.
-
-    Raises:
-        FileProcessingError: If there are issues reading the file.
-    """
+    """Read and validate the input CSV file."""
     try:
-        # Read CSV with tolerant parsing
-        df = pd.read_csv(file_path,
-                         encoding='utf-8',
-                         low_memory=False,
-                         dtype=str,  # Read all columns as strings to prevent type issues
-                         keep_default_na=False)  # Prevent converting empty strings to NaN
+        df = pd.read_csv(
+            file_path,
+            encoding="utf-8",
+            low_memory=False,
+            dtype=str,
+            keep_default_na=False,
+        )
 
-        # Validate required columns
         required_columns = ["First Name", "Last Name", "Phone 1 - Value"]
-        missing_columns = [col for col in required_columns if col not in df.columns]
-
+        missing_columns = [column for column in required_columns if column not in df.columns]
         if missing_columns:
-            raise FileProcessingError(f"Missing required columns: {', '.join(missing_columns)}")
+            raise FileProcessingError(
+                f"Missing required columns: {', '.join(missing_columns)}"
+            )
 
         return df
 
-    except pd.errors.EmptyDataError:
-        raise FileProcessingError("The input CSV file is empty.")
-    except pd.errors.ParserError as e:
-        raise FileProcessingError(f"Error parsing CSV file: {e}")
-    except Exception as e:
-        raise FileProcessingError(f"Unexpected error reading CSV file: {e}")
+    except (FileNotFoundError, PermissionError):
+        raise
+    except pd.errors.EmptyDataError as exc:
+        raise FileProcessingError("The input CSV file is empty.") from exc
+    except pd.errors.ParserError as exc:
+        raise FileProcessingError(f"Error parsing CSV file: {exc}") from exc
+    except ContactCleanerError:
+        raise
+    except Exception as exc:
+        raise FileProcessingError(f"Unexpected error reading CSV file: {exc}") from exc
 
 
 if __name__ == "__main__":
