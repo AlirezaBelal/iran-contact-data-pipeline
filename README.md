@@ -65,6 +65,26 @@ Normalized output CSV
 - **Installable CLI command**
 - **Automated tests and GitHub Actions CI**
 
+## Complementary downstream workflow
+
+A natural downstream use case for the normalized output is **[batch-sms-campaign-automation](https://github.com/AlirezaBelal/batch-sms-campaign-automation)**.
+
+Together, the repositories show two independent stages of a broader workflow:
+
+```text
+Raw contact exports
+      ↓
+Iran Contact Data Pipeline
+normalize · validate · select preferred mobile
+      ↓
+Downstream-ready contact dataset
+      ↓
+Batch SMS Campaign Automation
+personalize · simulate · submit · observe
+```
+
+This repository does not depend on the SMS project, and the SMS project can accept data from other trusted sources. The relationship is intentionally documented as an upstream/downstream example rather than a hard software dependency.
+
 ## Input schema
 
 Required columns:
