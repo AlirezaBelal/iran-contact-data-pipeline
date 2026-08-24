@@ -1,17 +1,24 @@
-"""Constants for contact cleaning operations."""
+"""Constants for Iranian contact-cleaning operations."""
 
 import re
 
-# Iranian landline number regex pattern
-IRAN_LANDLINE_REGEX = re.compile(r"^0[0-9]{2,}[0-9]{7,}$")
+# Valid normalized mobile numbers use the local 09xxxxxxxxx format.
+IRAN_MOBILE_REGEX = re.compile(r"^09\d{9}$")
 
-# Mobile operator regex patterns
-MCI_REGEX = re.compile(r"^09(1|90|91|92)\d{7}$")  # Hamrah-e Aval
-IRANCELL_REGEX = re.compile(r"^09(3|00|01|02|20|21|22|32|35)\d{7}$")  # Irancell
-RIGHTEL_REGEX = re.compile(r"^092\d{7}$")  # Rightel
+# Common operator-prefix groups used by this portfolio snapshot.
+# They are intentionally explicit and can be extended as allocations evolve.
+MCI_REGEX = re.compile(r"^(?:091\d{8}|099[012]\d{7})$")
+IRANCELL_REGEX = re.compile(r"^(?:093\d{8}|090[0-5]\d{7})$")
+RIGHTEL_REGEX = re.compile(r"^092[0-3]\d{7}$")
 
-# Operator priority order
-OPERATOR_PRIORITY = [MCI_REGEX, IRANCELL_REGEX, RIGHTEL_REGEX]
+OPERATOR_PATTERNS = [
+    ("MCI", MCI_REGEX),
+    ("Irancell", IRANCELL_REGEX),
+    ("Rightel", RIGHTEL_REGEX),
+]
 
-# Maximum number of phone numbers to process per contact
+# Preferred operator order when a contact has multiple valid mobile numbers.
+OPERATOR_PRIORITY = ["MCI", "Irancell", "Rightel"]
+
+# Maximum number of phone fields to inspect per contact.
 MAX_PHONE_NUMBERS = 4
