@@ -26,6 +26,15 @@ class PhoneNormalizationTests(unittest.TestCase):
                 with self.assertRaises(ContactNormalizationError):
                     normalize_phone_number(value)
 
+    def test_rejection_error_does_not_expose_raw_phone_value(self):
+        raw_value = "invalid-private-contact-value"
+
+        with self.assertRaises(ContactNormalizationError) as context:
+            normalize_phone_number(raw_value)
+
+        self.assertNotIn(raw_value, str(context.exception))
+        self.assertEqual(str(context.exception), "Invalid Iranian mobile number")
+
     def test_operator_classification(self):
         self.assertEqual(detect_mobile_operator("09121234567"), "MCI")
         self.assertEqual(detect_mobile_operator("09901234567"), "MCI")

@@ -29,7 +29,9 @@ def normalize_phone_number(phone_number: str) -> str:
         digits = "0" + digits
 
     if not IRAN_MOBILE_REGEX.fullmatch(digits):
-        raise ContactNormalizationError(f"Invalid Iranian mobile number: {raw_value!r}")
+        # Contact data is potentially sensitive. Keep exception text generic so
+        # callers can safely log or surface it without leaking the raw value.
+        raise ContactNormalizationError("Invalid Iranian mobile number")
 
     return digits
 

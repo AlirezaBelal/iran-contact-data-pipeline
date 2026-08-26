@@ -53,8 +53,10 @@ def main() -> None:
     except ContactCleanerError as exc:
         print(f"Contact cleaning error: {exc}", file=sys.stderr)
         sys.exit(1)
-    except Exception as exc:
-        print(f"Unexpected error: {exc}", file=sys.stderr)
+    except Exception:
+        # Avoid surfacing arbitrary exception payloads because input rows may
+        # contain personal contact data.
+        print("Unexpected error while processing contact data.", file=sys.stderr)
         sys.exit(1)
 
 
@@ -87,11 +89,11 @@ def _read_input_file(file_path: str) -> pd.DataFrame:
     except pd.errors.EmptyDataError as exc:
         raise FileProcessingError("The input CSV file is empty.") from exc
     except pd.errors.ParserError as exc:
-        raise FileProcessingError(f"Error parsing CSV file: {exc}") from exc
+        raise FileProcessingError("Unable to parse the input CSV file.") from exc
     except ContactCleanerError:
         raise
     except Exception as exc:
-        raise FileProcessingError(f"Unexpected error reading CSV file: {exc}") from exc
+        raise FileProcessingError("Unable to read the input CSV file.") from exc
 
 
 if __name__ == "__main__":
