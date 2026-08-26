@@ -12,16 +12,7 @@ The broader operational workflow was tested on datasets of approximately **1 mil
 
 ## Product / data context
 
-Raw contact exports are rarely analysis- or automation-ready. Common issues include:
-
-- local and international phone-number representations
-- separators, spaces, and other formatting noise
-- landlines mixed with mobile fields
-- multiple phone fields per contact
-- duplicate representations of the same number
-- inconsistent operator prefixes
-- Persian text and spreadsheet-generated UTF-8 BOM files
-- records with no usable mobile number
+Raw contact exports are rarely analysis- or automation-ready. Common issues include local and international phone-number representations, multiple phone fields, duplicate representations, landlines mixed with mobile numbers, malformed values, inconsistent operator prefixes, Persian text, and spreadsheet-generated UTF-8 BOM files.
 
 The pipeline turns those inputs into a small, explicit output contract:
 
@@ -52,7 +43,7 @@ Normalized output CSV
 ## Core capabilities
 
 - **CSV batch processing** with pandas
-- **Iranian mobile format normalization** to `09xxxxxxxxx`
+- **Iranian mobile normalization** to `09xxxxxxxxx`
 - **Local / +98 / 0098 input handling**
 - **Malformed and landline rejection**
 - **Multi-phone-field extraction** from up to four fields
@@ -63,13 +54,12 @@ Normalized output CSV
 - **UTF-8 and UTF-8-BOM input compatibility**
 - **UTF-8-SIG output** for spreadsheet compatibility
 - **Installable CLI command**
-- **Automated tests and GitHub Actions CI**
+- **Privacy-safe validation errors** that do not echo raw phone values
+- **Automated tests, dependency auditing, package validation, and GitHub Actions CI**
 
 ## Complementary downstream workflow
 
 A natural downstream use case for the normalized output is **[batch-sms-campaign-automation](https://github.com/AlirezaBelal/batch-sms-campaign-automation)**.
-
-Together, the repositories show two independent stages of a broader workflow:
 
 ```text
 Raw contact exports
@@ -83,7 +73,7 @@ Batch SMS Campaign Automation
 personalize · simulate · submit · observe
 ```
 
-This repository does not depend on the SMS project, and the SMS project can accept data from other trusted sources. The relationship is intentionally documented as an upstream/downstream example rather than a hard software dependency.
+The repositories are intentionally independent. This relationship documents a natural upstream/downstream workflow rather than a runtime dependency.
 
 ## Input schema
 
@@ -109,8 +99,6 @@ Real contact exports should not be committed to the repository.
 
 ## Output contract
 
-The generated CSV contains:
-
 | Column | Description |
 |---|---|
 | `first_name` | Cleaned first name |
@@ -124,9 +112,7 @@ Rows without a usable normalized mobile number are excluded from the output.
 
 Normalization is intentionally conservative about **shape**: supported inputs are converted into the local `09xxxxxxxxx` representation, while malformed values and landline-shaped values are rejected.
 
-Operator classification is a separate heuristic layer. The public snapshot contains explicit prefix rules for selected MCI, Irancell, and Rightel ranges.
-
-Current preference order when multiple valid numbers exist:
+Operator classification is a separate heuristic layer. Current preference order when multiple valid numbers exist:
 
 1. MCI
 2. Irancell
@@ -140,6 +126,8 @@ Current preference order when multiple valid numbers exist:
 ```text
 .
 ├── README.md
+├── SECURITY.md
+├── LICENSE
 ├── requirements.txt
 ├── pyproject.toml               # Standard Python build backend
 ├── setup.py                     # Package and console-script metadata
@@ -153,15 +141,15 @@ Current preference order when multiple valid numbers exist:
 │   └── utils.py                 # Normalization and utility functions
 ├── tests/
 │   └── test_pipeline.py
-└── .github/workflows/
-    └── ci.yml
+└── .github/
+    ├── dependabot.yml
+    └── workflows/
+        └── ci.yml
 ```
 
 ## Quick start
 
 Requires **Python 3.9+**.
-
-### 1. Clone and create an environment
 
 ```bash
 git clone https://github.com/AlirezaBelal/iran-contact-data-pipeline.git
@@ -181,19 +169,13 @@ Windows PowerShell:
 .venv\Scripts\activate
 ```
 
-### 2. Install the CLI
+Install the CLI:
 
 ```bash
 python -m pip install -e .
 ```
 
-This exposes:
-
-```text
-contact-cleaner
-```
-
-### 3. Run the synthetic example
+Run the synthetic example:
 
 ```bash
 contact-cleaner examples/contacts.example.csv cleaned_contacts.csv
@@ -213,7 +195,7 @@ The generated file is ignored by Git.
 
 ## Example transformation
 
-Input values may include different representations:
+Supported representations such as:
 
 ```text
 0912 123 4567
@@ -222,13 +204,13 @@ Input values may include different representations:
 9121234567
 ```
 
-Supported representations normalize to:
+normalize to:
 
 ```text
 09121234567
 ```
 
-Malformed values and landlines such as `021...` are not converted into plausible-looking mobile numbers; they are rejected by the normalization layer.
+Malformed values and landlines such as `021...` are rejected rather than converted into plausible-looking mobile numbers.
 
 ## Tests
 
@@ -238,23 +220,13 @@ Run locally:
 python -m unittest discover -s tests -v
 ```
 
-The test suite covers:
-
-- local and international number representations
-- malformed / landline rejection
-- configured operator classification
-- multi-field operator-priority selection
-- duplicate suppression within one contact
-- Persian name preservation
-- UTF-8-BOM input compatibility
-- missing required-column rejection
-- dropping contacts without a usable mobile number
+The suite covers normalization formats, malformed/landline rejection, privacy-safe validation errors, operator classification, operator-priority selection, duplicate suppression, Persian name preservation, UTF-8-BOM compatibility, schema validation, and dropping contacts without a usable mobile number.
 
 ## Continuous Integration
 
 GitHub Actions runs on pushes and pull requests to `master`.
 
-CI verifies the application on **Python 3.9, 3.11, and 3.12** by checking:
+CI verifies the application on **Python 3.9 through 3.14** by checking:
 
 - editable package installation
 - dependency consistency with `pip check`
@@ -262,13 +234,14 @@ CI verifies the application on **Python 3.9, 3.11, and 3.12** by checking:
 - unit tests
 - the installed `contact-cleaner` command against the synthetic example
 - output schema, row count, and normalized-number shape
-- Python distribution buildability
+- runtime dependency vulnerabilities with `pip-audit`
+- Python distribution buildability and metadata with `build` + `twine check`
 
-The badge at the top of this README reflects the latest CI state.
+Repository workflow permissions are read-only for contents, and checkout credentials are not persisted after checkout.
 
 ## Data safety
 
-Contact exports can contain personally identifiable information. The repository therefore ignores general CSV/Excel datasets and generated outputs, while explicitly tracking only the synthetic file under `examples/`.
+Contact exports can contain personally identifiable information. The repository ignores general CSV/Excel datasets and generated outputs while explicitly tracking only the synthetic example under `examples/`.
 
 For real workflows:
 
@@ -277,6 +250,9 @@ For real workflows:
 - keep operational datasets outside the repository
 - review retention and access requirements before processing personal data
 - treat names and phone numbers as sensitive operational data
+- do not include raw contact values in logs, exceptions, issues, or bug reports
+
+See [SECURITY.md](SECURITY.md) for reporting and data-handling guidance.
 
 ## Public-snapshot boundaries
 
@@ -291,13 +267,17 @@ Not included here:
 - number-portability resolution
 - distributed processing or job scheduling
 
-The approximately **1 million-record** figure refers to the broader operational workflow that was tested at that scale, not to a benchmark claimed for this exact public repository snapshot.
+The approximately **1 million-record** figure refers to the broader operational workflow tested at that scale, not to a benchmark claimed for this exact public repository snapshot.
 
 ## Why this project matters
 
 The useful engineering problem is not simply cleaning strings. It is creating a predictable data contract from messy operational input while making validation, selection rules, data boundaries, and failure behavior explicit:
 
 **raw exports → schema validation → normalization → selection → clean downstream dataset**
+
+## License
+
+Released under the [MIT License](LICENSE).
 
 ## Portfolio
 

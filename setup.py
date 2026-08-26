@@ -17,7 +17,9 @@ setup(
     project_urls={
         "Portfolio": "https://alirezabelal.github.io/",
         "Source": "https://github.com/AlirezaBelal/iran-contact-data-pipeline",
+        "Security": "https://github.com/AlirezaBelal/iran-contact-data-pipeline/blob/master/SECURITY.md",
     },
+    license="MIT",
     package_dir={"": "src"},
     py_modules=[
         "cli",
@@ -42,6 +44,7 @@ setup(
         "phone-normalization",
     ],
     classifiers=[
+        "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
         "Operating System :: OS Independent",
