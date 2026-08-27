@@ -19,9 +19,20 @@ class PhoneNormalizationTests(unittest.TestCase):
         self.assertEqual(normalize_phone_number("9121234567"), "09121234567")
         self.assertEqual(normalize_phone_number("+98 912 123 4567"), "09121234567")
         self.assertEqual(normalize_phone_number("0098-912-123-4567"), "09121234567")
+        self.assertEqual(normalize_phone_number("۰۹۱۲ ۱۲۳ ۴۵۶۷"), "09121234567")
+        self.assertEqual(normalize_phone_number("٠٩١٢-١٢٣-٤٥٦٧"), "09121234567")
 
     def test_rejects_landline_and_malformed_values(self):
-        for value in ("02188990011", "12345", "", "not-a-number", "0912123456789"):
+        for value in (
+            "02188990011",
+            "12345",
+            "",
+            "not-a-number",
+            "0912123456789",
+            "0912abc1234567",
+            "phone: 09121234567",
+            "98+9121234567",
+        ):
             with self.subTest(value=value):
                 with self.assertRaises(ContactNormalizationError):
                     normalize_phone_number(value)

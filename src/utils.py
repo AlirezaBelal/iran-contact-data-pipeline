@@ -9,16 +9,32 @@ import pandas as pd
 from constants import IRAN_MOBILE_REGEX, OPERATOR_PATTERNS
 from exceptions import ContactNormalizationError
 
+DIGIT_TRANSLATION = str.maketrans(
+    "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩",
+    "01234567890123456789",
+)
+ALLOWED_PHONE_CHARS_REGEX = re.compile(r"^[0-9+\s().-]+$")
+
 
 def normalize_phone_number(phone_number: str) -> str:
     """Normalize an Iranian mobile number to local ``09xxxxxxxxx`` format.
 
     Supported inputs include local numbers, ``+98``/``0098`` international
-    forms and ten-digit numbers beginning with ``9``. Invalid, landline or
-    malformed values raise ``ContactNormalizationError`` rather than being
-    truncated into a plausible-looking number.
+    forms, ten-digit numbers beginning with ``9``, and Persian/Arabic digits.
+    Common visual separators are tolerated, while embedded text or unsupported
+    characters are rejected instead of being silently stripped away.
     """
     raw_value = "" if phone_number is None else str(phone_number).strip()
+    raw_value = raw_value.translate(DIGIT_TRANSLATION)
+
+    if (
+        not raw_value
+        or not ALLOWED_PHONE_CHARS_REGEX.fullmatch(raw_value)
+        or raw_value.count("+") > 1
+        or ("+" in raw_value and not raw_value.startswith("+"))
+    ):
+        raise ContactNormalizationError("Invalid Iranian mobile number")
+
     digits = re.sub(r"\D", "", raw_value)
 
     if digits.startswith("0098"):

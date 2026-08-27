@@ -8,6 +8,11 @@ __pycache__/
 venv/
 env/
 
+# Local secrets / environment configuration
+.env
+.env.*
+!.env.example
+
 # Distribution / packaging
 dist/
 build/
@@ -26,12 +31,19 @@ build/
 
 # Local datasets and generated outputs
 *.csv
+*.tsv
 *.xlsx
 *.xls
+*.parquet
+*.feather
+*.jsonl
+*.vcf
 !examples/
 !examples/*.csv
-cleaned_contacts.csv
+data/
+inputs/
 outputs/
+cleaned_contacts.csv
 
 # Operating system files
 .DS_Store
