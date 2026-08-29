@@ -1,13 +1,16 @@
+import contextlib
+import io
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from cli import _read_input_file
+from cli import _read_input_file, main
 from contact_processor import ContactProcessor
 from exceptions import ContactNormalizationError, FileProcessingError
 from utils import detect_mobile_operator, normalize_phone_number
@@ -138,6 +141,46 @@ class CsvInputTests(unittest.TestCase):
 
             with self.assertRaises(FileProcessingError):
                 _read_input_file(str(input_path))
+
+
+class CliTests(unittest.TestCase):
+    def test_main_writes_cleaned_output_and_summary(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = Path(temp_dir) / "contacts.csv"
+            output_path = Path(temp_dir) / "nested" / "cleaned.csv"
+            input_path.write_text(
+                "First Name,Last Name,Phone 1 - Value\n"
+                "Ali,Valid,09121234567\n"
+                "No,Mobile,02188990011\n",
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+
+            with patch.object(sys, "argv", ["contact-cleaner", str(input_path), str(output_path)]):
+                with contextlib.redirect_stdout(stdout):
+                    main()
+
+            output = pd.read_csv(output_path, dtype=str)
+            self.assertEqual(len(output), 1)
+            self.assertEqual(output.iloc[0]["selected_phone"], "09121234567")
+            summary = stdout.getvalue()
+            self.assertIn("Input rows: 2", summary)
+            self.assertIn("Output rows with a valid mobile number: 1", summary)
+            self.assertIn("Rows without a valid mobile number: 1", summary)
+
+    def test_main_returns_safe_error_for_missing_input(self):
+        stderr = io.StringIO()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            missing = Path(temp_dir) / "missing-private-name.csv"
+            output = Path(temp_dir) / "cleaned.csv"
+
+            with patch.object(sys, "argv", ["contact-cleaner", str(missing), str(output)]):
+                with contextlib.redirect_stderr(stderr):
+                    with self.assertRaises(SystemExit) as context:
+                        main()
+
+            self.assertEqual(context.exception.code, 1)
+            self.assertIn("input file not found", stderr.getvalue().lower())
 
 
 if __name__ == "__main__":
