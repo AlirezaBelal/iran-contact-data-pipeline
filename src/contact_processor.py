@@ -63,15 +63,30 @@ class ContactProcessor:
 
     @classmethod
     def _extract_phone_numbers(
-        cls, row: tuple[object, ...], column_positions: Mapping[str, int]
+        cls,
+        row: pd.Series | tuple[object, ...],
+        column_positions: Mapping[str, int] | None = None,
     ) -> List[Dict[str, str]]:
-        """Extract valid normalized mobile numbers from configured phone fields."""
+        """Extract valid normalized mobile numbers from one contact record.
+
+        ``clean_contacts`` passes tuples plus a precomputed column-position map
+        for lower iteration overhead. Accepting a Series without that map keeps
+        the focused extractor contract available to unit tests and callers.
+        """
         numbers: List[Dict[str, str]] = []
         seen = set()
 
         for index in range(1, MAX_PHONE_NUMBERS + 1):
             phone_key = f"Phone {index} - Value"
-            raw_value = cls._value_for_column(row, column_positions, phone_key)
+            if column_positions is None:
+                if not isinstance(row, pd.Series) or phone_key not in row:
+                    continue
+                raw_value = row[phone_key]
+            else:
+                if not isinstance(row, tuple):
+                    raise TypeError("tuple row required when column positions are provided")
+                raw_value = cls._value_for_column(row, column_positions, phone_key)
+
             if raw_value is None or pd.isna(raw_value):
                 continue
 
