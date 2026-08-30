@@ -1,6 +1,6 @@
 """Contact normalization and selection logic."""
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Mapping, Optional
 
 import pandas as pd
 
@@ -19,11 +19,18 @@ class ContactProcessor:
         Rows without any valid Iranian mobile number are omitted. When a row
         contains multiple valid numbers, configured operator priority is used;
         otherwise the first valid number is selected.
+
+        Row iteration uses ``itertuples`` rather than ``iterrows`` so pandas
+        does not allocate a Series for every record. This keeps the existing
+        validation semantics while reducing per-row overhead for larger files.
         """
         cleaned_contacts: List[Dict[str, str]] = []
+        column_positions = {
+            column: position for position, column in enumerate(df.columns)
+        }
 
-        for _, row in df.iterrows():
-            numbers = cls._extract_phone_numbers(row)
+        for row in df.itertuples(index=False, name=None):
+            numbers = cls._extract_phone_numbers(row, column_positions)
             selected = cls._select_best_phone_number(numbers)
 
             if not selected:
@@ -31,8 +38,12 @@ class ContactProcessor:
 
             cleaned_contacts.append(
                 {
-                    "first_name": safe_str_conversion(row.get("First Name")),
-                    "last_name": safe_str_conversion(row.get("Last Name")),
+                    "first_name": safe_str_conversion(
+                        cls._value_for_column(row, column_positions, "First Name")
+                    ),
+                    "last_name": safe_str_conversion(
+                        cls._value_for_column(row, column_positions, "Last Name")
+                    ),
                     "selected_phone": selected["number"],
                     "mobile_operator": selected["operator"],
                 }
@@ -43,18 +54,28 @@ class ContactProcessor:
             columns=["first_name", "last_name", "selected_phone", "mobile_operator"],
         )
 
+    @staticmethod
+    def _value_for_column(
+        row: tuple[object, ...], column_positions: Mapping[str, int], column: str
+    ) -> object | None:
+        position = column_positions.get(column)
+        return row[position] if position is not None else None
+
     @classmethod
-    def _extract_phone_numbers(cls, row: pd.Series) -> List[Dict[str, str]]:
+    def _extract_phone_numbers(
+        cls, row: tuple[object, ...], column_positions: Mapping[str, int]
+    ) -> List[Dict[str, str]]:
         """Extract valid normalized mobile numbers from configured phone fields."""
         numbers: List[Dict[str, str]] = []
         seen = set()
 
         for index in range(1, MAX_PHONE_NUMBERS + 1):
             phone_key = f"Phone {index} - Value"
-            if phone_key not in row or pd.isna(row[phone_key]):
+            raw_value = cls._value_for_column(row, column_positions, phone_key)
+            if raw_value is None or pd.isna(raw_value):
                 continue
 
-            raw_phone = safe_str_conversion(row[phone_key])
+            raw_phone = safe_str_conversion(raw_value)
             if not raw_phone:
                 continue
 
