@@ -1,5 +1,7 @@
 """Contact normalization and selection logic."""
 
+from __future__ import annotations
+
 from typing import Dict, List, Mapping, Optional
 
 import pandas as pd
