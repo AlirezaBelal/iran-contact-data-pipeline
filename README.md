@@ -2,13 +2,9 @@
 
 [![CI](https://github.com/AlirezaBelal/iran-contact-data-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/AlirezaBelal/iran-contact-data-pipeline/actions/workflows/ci.yml)
 
-> A Python CLI pipeline for turning inconsistent Iranian contact exports into a normalized, downstream-ready contact dataset.
+> A Python CLI pipeline for structured contact-data processing: phone normalization, validation, operator classification, selection rules, and clean output generation.
 
-This project addresses a practical data-operations problem:
-
-**How can large contact exports with inconsistent phone formats, multiple phone fields, malformed values, and mixed operator prefixes be transformed into a predictable dataset for downstream workflows?**
-
-The broader operational workflow was tested on datasets of approximately **1 million contact records**. This public repository is a **sanitized portfolio snapshot** of the normalization core; it intentionally does not reproduce every operational component, integration, or dataset used in that environment.
+This project demonstrates a data-processing workflow for transforming inconsistent phone fields and operator prefixes into a predictable dataset for downstream use. The public repository is a **sanitized portfolio snapshot** of the normalization core; it intentionally does not reproduce every operational component or integration from the broader workflow.
 
 ## Product / data context
 
@@ -256,7 +252,7 @@ See [SECURITY.md](SECURITY.md) for reporting and data-handling guidance.
 
 ## Public-snapshot boundaries
 
-This repository demonstrates the normalization and selection core. It is **not** a claim that the public code reproduces the complete operational pipeline used on larger datasets.
+This repository demonstrates the normalization and selection core. It does not claim to reproduce every component of the broader operational workflow.
 
 Not included here:
 
@@ -266,8 +262,6 @@ Not included here:
 - authoritative telecom allocation lookup
 - number-portability resolution
 - distributed processing or job scheduling
-
-The approximately **1 million-record** figure refers to the broader operational workflow tested at that scale, not to a benchmark claimed for this exact public repository snapshot.
 
 ## Why this project matters
 
