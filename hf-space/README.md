@@ -1,7 +1,7 @@
 ---
 title: Iranian Contact Data Pipeline
 emoji: 🧹
-colorFrom: teal
+colorFrom: green
 colorTo: blue
 sdk: gradio
 app_file: app.py
