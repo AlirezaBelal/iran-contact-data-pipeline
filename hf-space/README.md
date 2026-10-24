@@ -31,3 +31,20 @@ about hosting/access logs. Existing hosted Gradio code, dependencies and caches 
 separate from these proposed static files and are not changed by GitHub tests.
 
 [Local CLI quick start](https://github.com/AlirezaBelal/iran-contact-data-pipeline#safe-quick-start)
+
+## Approved publication cleanup and verification
+
+The pinned Hugging Face CLI 2.3.0 upload uses explicit `--delete app.py` and
+`--delete requirements.txt` in the same commit as the static upload. These are
+the obsolete runtime files observed in the remote tree; `.gitattributes` and
+unrelated files are preserved. There is no repository-wide deletion wildcard.
+This procedure runs only after separate owner authorization, never during CI.
+
+After a separately approved publication:
+
+- Confirm remote README metadata has `sdk: static` and serves `index.html`.
+- Confirm the previous Gradio interface, CSV upload and contact-entry UI are absent.
+- Confirm `app.py` and `requirements.txt` are absent from the current remote tree.
+- Confirm only the reviewed synthetic fixture and core-generated results appear.
+- Review residual hosting caches and retention separately. Removing current files
+  does not erase Git history or prove that historical contact data was deleted.
