@@ -48,3 +48,8 @@ cleaned_contacts.csv
 # Operating system files
 .DS_Store
 Thumbs.db
+
+.coverage*
+htmlcov/
+.gradio/
+.contact-output-*.tmp

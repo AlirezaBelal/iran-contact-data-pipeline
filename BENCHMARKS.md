@@ -21,3 +21,21 @@ The current implementation uses row-wise pandas processing. Benchmark results de
 Use the same synthetic row counts before and after a vectorization, chunking, Polars, or PyArrow experiment. Keep an optimization only when it preserves normalization/selection behavior and demonstrates a meaningful measured improvement.
 
 CI runs a 1,000-row benchmark smoke test to keep the benchmark executable, but deliberately does not enforce a wall-clock threshold because shared GitHub runners are not stable benchmark infrastructure.
+
+## Measured safety/quality instrumentation cost (2026-10-24)
+
+Three fresh-process runs per size, same local Python 3.12 / pandas environment,
+using only the benchmark's synthetic generator. Times are medians for core
+processing, excluding input generation and CSV I/O. Baseline is `4d935443`.
+
+| Rows | Baseline seconds | Instrumented seconds | Baseline / instrumented peak process MiB |
+|---|---:|---:|---:|
+| 1,000 | 0.005055 | 0.006370 | 65.92 / 66.64 |
+| 10,000 | 0.060239 | 0.069751 | 70.24 / 71.50 |
+| 100,000 | 0.541971 | 0.627548 | 111.99 / 117.06 |
+
+Quality counters and the set used to report repeated selected numbers add overhead
+(about 16% time at 100,000 rows in this measurement). This is not a performance
+optimization claim. Peak process memory is Linux `ru_maxrss`, including interpreter,
+pandas, generated input and output; it is not incremental algorithm-only memory.
+No timing threshold or change of DataFrame framework is justified by these results.

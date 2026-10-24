@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, Optional
 
 import pandas as pd
@@ -9,6 +10,20 @@ import pandas as pd
 from constants import MAX_PHONE_NUMBERS, OPERATOR_PRIORITY
 from exceptions import ContactNormalizationError
 from utils import detect_mobile_operator, normalize_phone_number, safe_str_conversion
+
+
+@dataclass
+class ProcessingStats:
+    """Aggregate quality metrics; no names or phone values."""
+
+    input_rows: int = 0
+    output_rows: int = 0
+    invalid_phone_values: int = 0
+    duplicate_numbers_within_rows: int = 0
+    rows_with_multiple_candidates: int = 0
+    repeated_selected_numbers: int = 0
+    rows_without_names: int = 0
+    selected_operators: Dict[str, int] = field(default_factory=dict)
 
 
 class ContactProcessor:
@@ -26,18 +41,41 @@ class ContactProcessor:
         does not allocate a Series for every record. This keeps the existing
         validation semantics while reducing per-row overhead for larger files.
         """
+        return cls.clean_contacts_with_stats(df)[0]
+
+    @classmethod
+    def clean_contacts_with_stats(cls, df: pd.DataFrame):
+        """Preserve contact rows while reporting aggregate selection/data-loss metrics."""
+        if not df.columns.is_unique:
+            raise ContactNormalizationError("Duplicate input columns are not supported")
+        stats = ProcessingStats(input_rows=len(df))
+        selected_numbers = set()
         cleaned_contacts: List[Dict[str, str]] = []
         column_positions = {
             column: position for position, column in enumerate(df.columns)
         }
 
         for row in df.itertuples(index=False, name=None):
-            numbers = cls._extract_phone_numbers(row, column_positions)
+            numbers = cls._extract_phone_numbers(row, column_positions, stats)
+            if len(numbers) > 1:
+                stats.rows_with_multiple_candidates += 1
             selected = cls._select_best_phone_number(numbers)
 
             if not selected:
                 continue
 
+            if selected["number"] in selected_numbers:
+                stats.repeated_selected_numbers += 1
+            selected_numbers.add(selected["number"])
+            stats.output_rows += 1
+            stats.selected_operators[selected["operator"]] = (
+                stats.selected_operators.get(selected["operator"], 0) + 1
+            )
+            if not any(
+                safe_str_conversion(cls._value_for_column(row, column_positions, name))
+                for name in ("First Name", "Last Name")
+            ):
+                stats.rows_without_names += 1
             cleaned_contacts.append(
                 {
                     "first_name": safe_str_conversion(
@@ -54,7 +92,7 @@ class ContactProcessor:
         return pd.DataFrame(
             cleaned_contacts,
             columns=["first_name", "last_name", "selected_phone", "mobile_operator"],
-        )
+        ), stats
 
     @staticmethod
     def _value_for_column(
@@ -68,6 +106,7 @@ class ContactProcessor:
         cls,
         row: pd.Series | tuple[object, ...],
         column_positions: Mapping[str, int] | None = None,
+        stats: Optional[ProcessingStats] = None,
     ) -> List[Dict[str, str]]:
         """Extract valid normalized mobile numbers from one contact record.
 
@@ -86,7 +125,9 @@ class ContactProcessor:
                 raw_value = row[phone_key]
             else:
                 if not isinstance(row, tuple):
-                    raise TypeError("tuple row required when column positions are provided")
+                    raise TypeError(
+                        "tuple row required when column positions are provided"
+                    )
                 raw_value = cls._value_for_column(row, column_positions, phone_key)
 
             if raw_value is None or pd.isna(raw_value):
@@ -99,9 +140,13 @@ class ContactProcessor:
             try:
                 normalized = normalize_phone_number(raw_phone)
             except ContactNormalizationError:
+                if stats is not None:
+                    stats.invalid_phone_values += 1
                 continue
 
             if normalized in seen:
+                if stats is not None:
+                    stats.duplicate_numbers_within_rows += 1
                 continue
 
             seen.add(normalized)

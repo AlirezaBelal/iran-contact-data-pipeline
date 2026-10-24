@@ -40,7 +40,7 @@ jobs:
         run: python -m pip check
 
       - name: Compile source
-        run: python -m compileall -q src tests benchmarks
+        run: python -m compileall -q src tests benchmarks hf-space/app.py
 
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
@@ -82,13 +82,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e . coverage ruff
+          python -m pip install -r hf-space/requirements.txt
 
       - name: Run Ruff correctness checks
-        run: ruff check --select E9,F63,F7,F82 src tests benchmarks
+        run: ruff check --select E9,F63,F7,F82 src tests benchmarks hf-space/app.py
 
       - name: Enforce test coverage
         run: |
-          coverage run --source=src -m unittest discover -s tests -v
+          REQUIRE_SPACE_TESTS=true coverage run --source=src,hf-space -m unittest discover -s tests -v
           coverage report --show-missing --fail-under=80
 
       - name: Run reproducible benchmark smoke
@@ -128,7 +129,9 @@ jobs:
         run: python -m pip install --upgrade pip pip-audit
 
       - name: Audit runtime dependencies
-        run: python -m pip_audit -r requirements.txt
+        run: |
+          python -m pip_audit -r requirements.txt
+          python -m pip_audit -r hf-space/requirements.txt
 
   package:
     name: Build package
@@ -151,3 +154,9 @@ jobs:
           python -m pip install --upgrade pip build twine
           python -m build
           python -m twine check dist/*
+
+      - name: Install and exercise the built wheel
+        run: |
+          python -m venv /tmp/contact-wheel-test
+          /tmp/contact-wheel-test/bin/pip install dist/*.whl
+          /tmp/contact-wheel-test/bin/contact-cleaner examples/contacts.example.csv /tmp/contact-wheel-output.csv
