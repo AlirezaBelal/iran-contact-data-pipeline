@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_publication:
-        description: "Publish the synthetic-only demo after reviewing Space hardware and existing caches"
+        description: "Publish the reviewed static synthetic demo after owner approval"
         required: true
         type: boolean
         default: false
@@ -26,7 +26,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Assemble demo with the authoritative core
+      - name: Stage only the reviewed static files
         run: |
           python - <<'PY'
           import os
@@ -34,10 +34,9 @@ jobs:
           import shutil
 
           target = Path(os.environ["RUNNER_TEMP"]) / "space-source"
-          shutil.copytree("hf-space", target)
-          shutil.copytree("src", target / "src", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-          for name in ("setup.py", "pyproject.toml", "LICENSE"):
-              shutil.copy2(name, target / name)
+          target.mkdir()
+          for name in ("README.md", "index.html"):
+              shutil.copy2(Path("hf-space") / name, target / name)
           PY
 
       - name: Install Hugging Face CLI

@@ -103,32 +103,32 @@ inputs, outputs and backups when appropriate. Spreadsheet software can interpret
 untrusted names as formulas; import CSV columns as text rather than trusting a
 file extension. Names are preserved, not rewritten as a spreadsheet-safety policy.
 
-## Synthetic-only demo source
+## Static synthetic demonstration
 
-`hf-space/app.py` demonstrates a fixed synthetic fixture using the installed core.
-It has no CSV-upload component, editable contact inputs or single-number textbox,
-and returns no application-generated file paths. No private contact arguments are
-accepted by its processing event. There is no duplicated normalization code.
+The CLI is the product. `hf-space/index.html` is a self-contained HTML/CSS preview
+of fixed synthetic input and its actual Python core output. It has no scripts,
+upload controls, contact textboxes, backend processing or user-generated downloads.
+Gradio and its Pillow dependency were removed because this presentation needs no
+Python/GPU runtime on the hosting platform. No vulnerable dependency is suppressed.
 
-Gradio and hosting platforms may retain request data and caches. Generic platform
-endpoints are not claimed to prevent all unsolicited uploads; do not transmit
-personal data to the demo or its API. The cache cleanup setting is not a substitute
-for access control or a verified retention architecture. See Gradio's
-[file-access](https://www.gradio.app/guides/file-access) and
-[cleanup](https://www.gradio.app/guides/resource-cleanup) documentation.
+From an installed checkout, regenerate with `python scripts/build_demo.py` or check
+for drift with `python scripts/build_demo.py --check`. The generator calls the
+same core as the CLI; it does not reimplement normalization in another language.
+Its fixture is explicitly synthetic, deterministic and network-free. Tests compare
+the HTML tables/counters with the core and CLI CSV contract. The committed page
+is reviewable and works without a network connection after opening it locally.
 
-The sync workflow is designed to be **manual-only**, requires explicit publication
-confirmation and assembles the Space source with the shared package. Publication
-requires separate maintainer approval and review of CPU hardware and existing
-platform caches. Import/contract tests do not launch a service and do not prove
-that an existing public Space has been updated. No deployment is part of this audit.
-See [Space source notes](hf-space/README.md) before any approved publication.
+The Space metadata uses [Static HTML SDK](https://huggingface.co/docs/hub/spaces-sdks-static).
+Only `hf-space/README.md` and `hf-space/index.html` are staged for publication.
+No source package, contact datasets or environment files belong in that payload.
+The proposed sync workflow remains manual-only, requires confirmation on master
+and must not be dispatched without separate owner approval.
 
-**Publication is currently blocked:** the audited Gradio dependency set requires
-Pillow `<13`, while reported Pillow 12.3.0 advisories are fixed in 13.0.0. The
-security gate must remain failing until a compatible supported dependency set is
-available; see [SECURITY.md](SECURITY.md). No audit suppression or dependency
-metadata override is used. This does not add Gradio/Pillow to the CLI package.
+These proposed files do **not** update the existing hosted Gradio service, its
+hardware or old caches. Its operational status must be verified separately before
+approved replacement. Hosting/access-log retention is not a zero-retention
+promise; do not send personal data to the existing service or its API. See
+[Space source notes](hf-space/README.md).
 
 ## Independent downstream SMS use
 
@@ -154,12 +154,11 @@ python -m build
 python -m twine check dist/*
 ```
 
-Core tests run on Python 3.9–3.14. The quality job additionally installs
-`hf-space/requirements.txt` from the repository root and **requires** offline
-Space import/contract tests; without those optional dependencies the local core
-suite explicitly skips them. Full coverage uses `--source=src,hf-space`.
-CI also checks Ruff correctness, dependencies and dataset hygiene, builds wheel/sdist,
-and exercises an installed wheel. No CI job publishes or processes real contacts.
+All tests run on Python 3.9–3.14 without Gradio. Full coverage includes the core
+and generator using `--source=src,scripts`. CI checks committed HTML against fresh
+core output, Ruff correctness, dataset hygiene, runtime/build dependency advisories,
+wheel/sdist validity and an independently installed wheel. No CI job publishes or
+processes real contacts. Install build tools with `pip install -r requirements-build.txt`.
 
 [Benchmarks](BENCHMARKS.md) use synthetic data without unstable timing gates.
 The core retains `itertuples()` and does not add distributed processing or another

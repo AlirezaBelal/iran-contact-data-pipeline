@@ -39,3 +39,7 @@ Quality counters and the set used to report repeated selected numbers add overhe
 optimization claim. Peak process memory is Linux `ru_maxrss`, including interpreter,
 pandas, generated input and output; it is not incremental algorithm-only memory.
 No timing threshold or change of DataFrame framework is justified by these results.
+
+The static preview is generated once at build time from five synthetic rows. It
+does not change the core algorithm or introduce a browser/backend processing
+benchmark; the measurements above still describe the instrumented Python core.
