@@ -2,277 +2,165 @@
 
 [![CI](https://github.com/AlirezaBelal/iran-contact-data-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/AlirezaBelal/iran-contact-data-pipeline/actions/workflows/ci.yml)
 
-> A Python CLI pipeline for structured contact-data processing: phone normalization, validation, operator classification, selection rules, and clean output generation.
+A lightweight local Python CLI for normalizing Iranian contact exports, inspecting
+up to four phone fields and selecting one mobile-number-shaped value per contact.
+It preserves Persian names and reports aggregate data-quality metrics.
 
-This project demonstrates a data-processing workflow for transforming inconsistent phone fields and operator prefixes into a predictable dataset for downstream use. The public repository is a **sanitized portfolio snapshot** of the normalization core; it intentionally does not reproduce every operational component or integration from the broader workflow.
+**Number format is not ownership, reachability or consent. This tool sends no SMS.**
 
-## Product / data context
+## Safe quick start
 
-Raw contact exports are rarely analysis- or automation-ready. Common issues include local and international phone-number representations, multiple phone fields, duplicate representations, landlines mixed with mobile numbers, malformed values, inconsistent operator prefixes, Persian text, and spreadsheet-generated UTF-8 BOM files.
-
-The pipeline turns those inputs into a small, explicit output contract:
-
-**one contact → one selected normalized mobile number → one operator label**
-
-## Processing flow
-
-```text
-Raw contact CSV
-      ↓
-Schema validation
-      ↓
-Inspect up to 4 phone fields
-      ↓
-Normalize supported phone representations
-      ↓
-Reject malformed / non-mobile-shaped values
-      ↓
-Suppress duplicate numbers within the contact
-      ↓
-Classify configured operator-prefix groups
-      ↓
-Apply operator preference
-      ↓
-Normalized output CSV
-```
-
-## Core capabilities
-
-- **CSV batch processing** with pandas
-- **Iranian mobile normalization** to `09xxxxxxxxx`
-- **Local / +98 / 0098 input handling**
-- **Malformed and landline rejection**
-- **Multi-phone-field extraction** from up to four fields
-- **Duplicate suppression within each contact**
-- **Explicit operator-priority selection**
-- **Prefix-based MCI / Irancell / Rightel classification**
-- **Persian text preservation**
-- **UTF-8 and UTF-8-BOM input compatibility**
-- **UTF-8-SIG output** for spreadsheet compatibility
-- **Installable CLI command**
-- **Privacy-safe validation errors** that do not echo raw phone values
-- **Automated tests, dependency auditing, package validation, and GitHub Actions CI**
-
-## Complementary downstream workflow
-
-A natural downstream use case for the normalized output is **[batch-sms-campaign-automation](https://github.com/AlirezaBelal/batch-sms-campaign-automation)**.
-
-```text
-Raw contact exports
-      ↓
-Iran Contact Data Pipeline
-normalize · validate · select preferred mobile
-      ↓
-Downstream-ready contact dataset
-      ↓
-Batch SMS Campaign Automation
-personalize · simulate · submit · observe
-```
-
-The repositories are intentionally independent. This relationship documents a natural upstream/downstream workflow rather than a runtime dependency.
-
-## Input schema
-
-Required columns:
-
-- `First Name`
-- `Last Name`
-- `Phone 1 - Value`
-
-Optional phone fields:
-
-- `Phone 2 - Value`
-- `Phone 3 - Value`
-- `Phone 4 - Value`
-
-A deliberately synthetic example is included at:
-
-```text
-examples/contacts.example.csv
-```
-
-Real contact exports should not be committed to the repository.
-
-## Output contract
-
-| Column | Description |
-|---|---|
-| `first_name` | Cleaned first name |
-| `last_name` | Cleaned last name |
-| `selected_phone` | Selected normalized number in `09xxxxxxxxx` format |
-| `mobile_operator` | Configured prefix group or `Other/Unknown` |
-
-Rows without a usable normalized mobile number are excluded from the output.
-
-## Number and operator semantics
-
-Normalization is intentionally conservative about **shape**: supported inputs are converted into the local `09xxxxxxxxx` representation, while malformed values and landline-shaped values are rejected.
-
-Operator classification is a separate heuristic layer. Current preference order when multiple valid numbers exist:
-
-1. MCI
-2. Irancell
-3. Rightel
-4. Other/Unknown
-
-> Prefix rules are not an authoritative telecom allocation or number-portability registry. They are transparent heuristics used by this public snapshot and can be updated in `src/constants.py` as requirements change.
-
-## Repository structure
-
-```text
-.
-├── README.md
-├── SECURITY.md
-├── LICENSE
-├── requirements.txt
-├── pyproject.toml               # Standard Python build backend
-├── setup.py                     # Package and console-script metadata
-├── examples/
-│   └── contacts.example.csv     # Synthetic demonstration dataset
-├── src/
-│   ├── cli.py                   # CLI, CSV loading and schema validation
-│   ├── constants.py             # Format/operator rules and priority
-│   ├── contact_processor.py     # Extraction, filtering and selection logic
-│   ├── exceptions.py            # Domain-specific exceptions
-│   └── utils.py                 # Normalization and utility functions
-├── tests/
-│   └── test_pipeline.py
-└── .github/
-    ├── dependabot.yml
-    └── workflows/
-        └── ci.yml
-```
-
-## Quick start
-
-Requires **Python 3.9+**.
+Python 3.9–3.14 is checked in CI. Use only the bundled synthetic fixture to try it:
 
 ```bash
 git clone https://github.com/AlirezaBelal/iran-contact-data-pipeline.git
 cd iran-contact-data-pipeline
 python -m venv .venv
-```
-
-Linux / macOS:
-
-```bash
+# Linux/macOS:
 source .venv/bin/activate
-```
-
-Windows PowerShell:
-
-```powershell
-.venv\Scripts\activate
-```
-
-Install the CLI:
-
-```bash
+# Windows PowerShell instead: .venv\Scripts\Activate.ps1
 python -m pip install -e .
+contact-cleaner examples/contacts.example.csv outputs/cleaned.csv
 ```
 
-Run the synthetic example:
-
-```bash
-contact-cleaner examples/contacts.example.csv cleaned_contacts.csv
-```
-
-Expected summary shape:
+Expected core summary:
 
 ```text
-Processing contacts...
-Cleaned contacts saved to cleaned_contacts.csv
+Cleaned contacts saved.
 Input rows: 6
 Output rows with a valid mobile number: 5
 Rows without a valid mobile number: 1
 ```
 
-The generated file is ignored by Git.
+Additional lines report invalid nonempty phone values, duplicates within records,
+rows with multiple candidates, repeated selected numbers across records, rows with
+no name and selected operator groups. These are aggregate counts, not contact data.
 
-## Example transformation
+An existing output is refused. Review it before explicitly using `--overwrite`.
+Input/output aliases (including hard links) are always refused; output symlinks are
+unsupported. Success exits 0, processing/file errors exit 1, CLI usage errors exit 2,
+and interruption exits 130. Diagnostics omit private contact values and file paths.
 
-Supported representations such as:
+## Input and output
 
-```text
-0912 123 4567
-+98 912 123 4567
-0098-912-123-4567
-9121234567
-```
+Input is UTF-8 CSV (BOM accepted). Required headers:
+`First Name`, `Last Name`, `Phone 1 - Value`. Names may be empty.
+Optional fields: `Phone 2 - Value` through `Phone 4 - Value`.
+Duplicate headers, malformed rows, inconsistent field counts, empty files and
+header-only files are rejected. CLI limits are 50 MiB and 100,000 input rows; the
+in-memory core has no claim of constant-memory or unbounded-scale processing.
 
-normalize to:
+| Output column | Meaning |
+|---|---|
+| `first_name` | Stripped first name, or empty |
+| `last_name` | Stripped last name, or empty |
+| `selected_phone` | Selected local `09xxxxxxxxx` representation |
+| `mobile_operator` | Heuristic prefix group, or `Other/Unknown` |
 
-```text
-09121234567
-```
+Output is UTF-8-SIG, including its four headers when every input row is rejected.
+Rows without any valid mobile-number format are omitted and counted. Source records
+are not modified. Output contains personal data and must remain private.
 
-Malformed values and landlines such as `021...` are rejected rather than converted into plausible-looking mobile numbers.
+### Normalization and selection
 
-## Tests
+Supported shapes include `09…`, ten-digit `9…`, `989…`, `+989…`, `00989…`, Persian
+and Arabic digits, and common visual separators. Invalid lengths, landlines,
+embedded arbitrary text, unsupported characters and malformed plus signs are
+rejected; an ambiguous number is not repaired into a plausible recipient.
 
-Run locally:
+Within each contact, equivalent normalized numbers are suppressed. Preference is
+**MCI → Irancell → Rightel → Other/Unknown**, then original phone-field order for
+ties. This is a transparent product rule, not a universal recommendation.
+
+Prefix classification is a conservative heuristic, not a current carrier registry.
+Ambiguous `0931`, `0932` and `0934` groups are intentionally left `Other/Unknown`.
+Unknown groups remain usable if their number shape is valid. Rules are in
+`src/constants.py`; they neither resolve mobile-number portability nor prove
+allocation, current service or ownership.
+
+Different contact rows sharing a selected number are **preserved**, even with
+identical names. `Repeated selected numbers across records` counts output rows
+after the first occurrence of each selected number. It does not merge people or
+claim globally unique recipients. Candidate/invalid/within-row metrics inspect only
+the first four configured phone fields; empty optional values are not errors.
+
+## Local file and privacy safeguards
+
+A complete output is written to a private temporary file in the destination
+folder, flushed, then atomically published. Without `--overwrite`, atomic
+create-if-absent prevents a competing writer from being overwritten. Filesystems
+that cannot support this operation fail safely. With explicit overwrite, the
+complete replacement is atomic. A failed/interrupted write removes its temporary
+file and does not truncate an existing output. Power-loss durability still depends
+on the filesystem; atomic publication is not a backup policy.
+
+New output files use restrictive creation permissions where supported. Keep input,
+output and their parent directories private; protect backups and host access too.
+Do not commit datasets or attach them to Issues, PRs or public services. The tool
+intentionally writes the requested normalized file: **there is no zero-retention
+claim or automatic deletion**. Apply an authorized retention policy and delete
+inputs, outputs and backups when appropriate. Spreadsheet software can interpret
+untrusted names as formulas; import CSV columns as text rather than trusting a
+file extension. Names are preserved, not rewritten as a spreadsheet-safety policy.
+
+## Static synthetic demonstration
+
+The CLI is the product. `hf-space/index.html` is a self-contained HTML/CSS preview
+of fixed synthetic input and its actual Python core output. It has no scripts,
+upload controls, contact textboxes, backend processing or user-generated downloads.
+Gradio and its Pillow dependency were removed because this presentation needs no
+Python/GPU runtime on the hosting platform. No vulnerable dependency is suppressed.
+
+From an installed checkout, regenerate with `python scripts/build_demo.py` or check
+for drift with `python scripts/build_demo.py --check`. The generator calls the
+same core as the CLI; it does not reimplement normalization in another language.
+Its fixture is explicitly synthetic, deterministic and network-free. Tests compare
+the HTML tables/counters with the core and CLI CSV contract. The committed page
+is reviewable and works without a network connection after opening it locally.
+
+The Space metadata uses [Static HTML SDK](https://huggingface.co/docs/hub/spaces-sdks-static).
+Only `hf-space/README.md` and `hf-space/index.html` are staged for publication.
+No source package, contact datasets or environment files belong in that payload.
+The proposed sync workflow remains manual-only, requires confirmation on master
+and must not be dispatched without separate owner approval.
+
+These proposed files do **not** update the existing hosted Gradio service, its
+hardware or old caches. Its operational status must be verified separately before
+approved replacement. Hosting/access-log retention is not a zero-retention
+promise; do not send personal data to the existing service or its API. See
+[Space source notes](hf-space/README.md).
+
+## Independent downstream SMS use
+
+[Batch SMS Campaign Automation](https://github.com/AlirezaBelal/batch-sms-campaign-automation)
+is an independent downstream tool. Its phone normalizer accepts this local format.
+Its name column can be configured as `first_name`; `selected_phone` already matches.
+
+This output **does not contain or create consent**. An authorized enrichment step
+must supply independently supported consent status, scope, source and timestamp;
+an exclusion list and explicit sending authorization are also required downstream.
+Do not infer permission from a contact export. There is no automatic forwarding,
+SMS dependency, shared database or campaign execution in this repository.
+
+## Development and verification
 
 ```bash
 python -m unittest discover -s tests -v
+python -m pip install coverage ruff build twine pip-audit
+coverage run --source=src -m unittest discover -s tests
+coverage report --show-missing --fail-under=80
+python benchmarks/benchmark_pipeline.py --rows 10000
+python -m build
+python -m twine check dist/*
 ```
 
-The suite covers normalization formats, malformed/landline rejection, privacy-safe validation errors, operator classification, operator-priority selection, duplicate suppression, Persian name preservation, UTF-8-BOM compatibility, schema validation, and dropping contacts without a usable mobile number.
+All tests run on Python 3.9–3.14 without Gradio. Full coverage includes the core
+and generator using `--source=src,scripts`. CI checks committed HTML against fresh
+core output, Ruff correctness, dataset hygiene, runtime/build dependency advisories,
+wheel/sdist validity and an independently installed wheel. No CI job publishes or
+processes real contacts. Install build tools with `pip install -r requirements-build.txt`.
 
-## Continuous Integration
-
-GitHub Actions runs on pushes and pull requests to `master`.
-
-CI verifies the application on **Python 3.9 through 3.14** by checking:
-
-- editable package installation
-- dependency consistency with `pip check`
-- source compilation / syntax
-- unit tests
-- the installed `contact-cleaner` command against the synthetic example
-- output schema, row count, and normalized-number shape
-- runtime dependency vulnerabilities with `pip-audit`
-- Python distribution buildability and metadata with `build` + `twine check`
-
-Repository workflow permissions are read-only for contents, and checkout credentials are not persisted after checkout.
-
-## Data safety
-
-Contact exports can contain personally identifiable information. The repository ignores general CSV/Excel datasets and generated outputs while explicitly tracking only the synthetic example under `examples/`.
-
-For real workflows:
-
-- do not commit source contact exports
-- do not publish normalized output files
-- keep operational datasets outside the repository
-- review retention and access requirements before processing personal data
-- treat names and phone numbers as sensitive operational data
-- do not include raw contact values in logs, exceptions, issues, or bug reports
-
-See [SECURITY.md](SECURITY.md) for reporting and data-handling guidance.
-
-## Public-snapshot boundaries
-
-This repository demonstrates the normalization and selection core. It does not claim to reproduce every component of the broader operational workflow.
-
-Not included here:
-
-- production-scale orchestration
-- external storage or downstream integration layers
-- every transformation used in the broader operational workflow
-- authoritative telecom allocation lookup
-- number-portability resolution
-- distributed processing or job scheduling
-
-## Why this project matters
-
-The useful engineering problem is not simply cleaning strings. It is creating a predictable data contract from messy operational input while making validation, selection rules, data boundaries, and failure behavior explicit:
-
-**raw exports → schema validation → normalization → selection → clean downstream dataset**
-
-## License
-
-Released under the [MIT License](LICENSE).
-
-## Portfolio
-
-For broader project context and other product/data work, see **[alirezabelal.github.io](https://alirezabelal.github.io/)**.
+[Benchmarks](BENCHMARKS.md) use synthetic data without unstable timing gates.
+The core retains `itertuples()` and does not add distributed processing or another
+DataFrame framework. [Security guidance](SECURITY.md) covers private reporting.
+MIT licensed; no CRM, telecom lookup, consent verification or messaging service is included.

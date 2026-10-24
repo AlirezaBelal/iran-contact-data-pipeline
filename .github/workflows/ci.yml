@@ -40,7 +40,7 @@ jobs:
         run: python -m pip check
 
       - name: Compile source
-        run: python -m compileall -q src tests benchmarks
+        run: python -m compileall -q src tests benchmarks scripts
 
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
@@ -84,12 +84,15 @@ jobs:
           python -m pip install -e . coverage ruff
 
       - name: Run Ruff correctness checks
-        run: ruff check --select E9,F63,F7,F82 src tests benchmarks
+        run: ruff check --select E9,F63,F7,F82 src tests benchmarks scripts
 
       - name: Enforce test coverage
         run: |
-          coverage run --source=src -m unittest discover -s tests -v
+          coverage run --source=src,scripts -m unittest discover -s tests -v
           coverage report --show-missing --fail-under=80
+
+      - name: Check generated static demo
+        run: python scripts/build_demo.py --check
 
       - name: Run reproducible benchmark smoke
         run: python benchmarks/benchmark_pipeline.py --rows 1000
@@ -128,7 +131,9 @@ jobs:
         run: python -m pip install --upgrade pip pip-audit
 
       - name: Audit runtime dependencies
-        run: python -m pip_audit -r requirements.txt
+        run: |
+          python -m pip_audit -r requirements.txt
+          python -m pip_audit -r requirements-build.txt
 
   package:
     name: Build package
@@ -148,6 +153,13 @@ jobs:
 
       - name: Build and validate distribution
         run: |
-          python -m pip install --upgrade pip build twine
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.txt
           python -m build
           python -m twine check dist/*
+
+      - name: Install and exercise the built wheel
+        run: |
+          python -m venv /tmp/contact-wheel-test
+          /tmp/contact-wheel-test/bin/pip install dist/*.whl
+          /tmp/contact-wheel-test/bin/contact-cleaner examples/contacts.example.csv /tmp/contact-wheel-output.csv

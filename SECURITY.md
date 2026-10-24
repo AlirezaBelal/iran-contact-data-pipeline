@@ -25,3 +25,32 @@ Any credential or sensitive dataset that has been publicly exposed should be tre
 ## Dependency and CI security
 
 GitHub Actions uses read-only repository contents permission. Runtime dependencies are checked in CI with `pip-audit`, and automated dependency update checks are configured with Dependabot.
+
+## Local processing and public demo
+
+Local CLI output intentionally contains normalized personal data. Protect inputs,
+outputs, their directories and backups; define retention and deletion procedures.
+Atomic output publication prevents partial/truncated files, not all power-loss or
+host-compromise scenarios. Import untrusted CSV names as text in spreadsheets.
+
+The proposed demo is static HTML/CSS generated offline from a fixed synthetic
+fixture. It accepts no contact inputs and has no processing backend or Python runtime.
+It does not need Gradio, Pillow or GPU support. This does not establish anything
+about old hosted code/caches or the platform's access logs. Review the existing
+service separately; never upload real data for testing. Publication remains manual
+and requires separate owner approval.
+
+Normalization does not establish ownership, active service or consent. Shared phone
+numbers across contact rows are retained; downstream senders must independently
+verify permission, honor exclusions and prevent duplicate submissions.
+
+## Removed demo runtime dependency
+
+The former Gradio dependency set constrained Pillow below the version fixing the
+reported advisories, including
+[GHSA-78g4-xqwv-q3g8](https://github.com/python-pillow/Pillow/security/advisories/GHSA-78g4-xqwv-q3g8).
+The resolution is removal of the unnecessary Python demo runtime, not an audit
+exception or unsupported dependency override. CI still audits the actual CLI
+runtime and distribution build/validation dependencies. Static files need no
+Python packages on the hosting platform. Existing hosted dependencies have not
+been inspected, replaced or purged by these source changes.

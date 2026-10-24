@@ -3,38 +3,48 @@ title: Iranian Contact Data Pipeline
 emoji: 🧹
 colorFrom: green
 colorTo: blue
-sdk: gradio
-app_file: app.py
-python_version: "3.12"
-pinned: false
+sdk: static
+app_file: index.html
 license: mit
 ---
 
-# Iranian Contact Data Pipeline — Demo
+# Iranian Contact Data Pipeline — Static Synthetic Demonstration
 
-A privacy-safe interactive demo of the public Python pipeline for structured Iranian contact-data processing.
+The CLI is the product. This HTML/CSS page shows a fixed synthetic input and the
+actual output of the authoritative Python core. It has no scripts, contact inputs,
+upload form, processing API, user-generated downloads or Python/GPU runtime.
+Gradio and its Pillow dependency are no longer needed for this demonstration.
 
-The Space demonstrates:
-- Iranian mobile normalization
-- malformed/landline rejection
-- multi-phone-field extraction
-- duplicate suppression
-- operator classification
-- explicit operator-priority selection
+From an installed repository checkout, run `python scripts/build_demo.py` to
+regenerate the committed page or add `--check` to detect drift. Fixture data is
+embedded in that generator; no external contacts, randomness, timestamp or network
+are used. Tests compare the rendered tables and counters with core/CLI results.
 
-Output contract:
+Only this README and `index.html` belong in the published Space root. CI does not
+publish them. The sync workflow remains manual-only, requires explicit confirmation
+on master and must not run without separate owner approval. No Space build command,
+Python requirements, source package or backend is required on the hosting platform.
 
-`one contact → one selected normalized mobile number → one operator label`
+Number format is not ownership, reachability or consent. Operator labels are
+heuristic and do not resolve portability. This page makes no zero-retention claim
+about hosting/access logs. Existing hosted Gradio code, dependencies and caches are
+separate from these proposed static files and are not changed by GitHub tests.
 
-Operator priority:
-1. MCI
-2. Irancell
-3. Rightel
-4. Other / Unknown
+[Local CLI quick start](https://github.com/AlirezaBelal/iran-contact-data-pipeline#safe-quick-start)
 
-Operator-prefix rules are transparent heuristics, not an authoritative telecom allocation or number-portability registry.
+## Approved publication cleanup and verification
 
-Use synthetic or intentionally shared data only.
+The pinned Hugging Face CLI 2.3.0 upload uses explicit `--delete app.py` and
+`--delete requirements.txt` in the same commit as the static upload. These are
+the obsolete runtime files observed in the remote tree; `.gitattributes` and
+unrelated files are preserved. There is no repository-wide deletion wildcard.
+This procedure runs only after separate owner authorization, never during CI.
 
-Original project:
-https://github.com/AlirezaBelal/iran-contact-data-pipeline
+After a separately approved publication:
+
+- Confirm remote README metadata has `sdk: static` and serves `index.html`.
+- Confirm the previous Gradio interface, CSV upload and contact-entry UI are absent.
+- Confirm `app.py` and `requirements.txt` are absent from the current remote tree.
+- Confirm only the reviewed synthetic fixture and core-generated results appear.
+- Review residual hosting caches and retention separately. Removing current files
+  does not erase Git history or prove that historical contact data was deleted.

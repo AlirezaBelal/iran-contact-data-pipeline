@@ -36,6 +36,8 @@ def normalize_phone_number(phone_number: str) -> str:
         raise ContactNormalizationError("Invalid Iranian mobile number")
 
     digits = re.sub(r"\D", "", raw_value)
+    if raw_value.startswith("+") and not digits.startswith("98"):
+        raise ContactNormalizationError("Invalid Iranian mobile number")
 
     if digits.startswith("0098"):
         digits = "0" + digits[4:]

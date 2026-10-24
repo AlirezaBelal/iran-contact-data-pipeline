@@ -1,32 +1,51 @@
 name: Sync Hugging Face Space
 
+# No push trigger: source review and CI must not publish a public service.
 on:
-  push:
-    branches: [master]
-    paths:
-      - "hf-space/**"
-      - ".github/workflows/sync-huggingface.yml"
   workflow_dispatch:
+    inputs:
+      confirm_publication:
+        description: "Publish the reviewed static synthetic demo after owner approval"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
 
 jobs:
   publish:
+    if: github.ref == 'refs/heads/master' && inputs.confirm_publication == true
     runs-on: ubuntu-latest
-
     permissions:
       id-token: write
       contents: read
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout approved source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Stage only the reviewed static files
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import shutil
+
+          target = Path(os.environ["RUNNER_TEMP"]) / "space-source"
+          target.mkdir()
+          for name in ("README.md", "index.html"):
+              shutil.copy2(Path("hf-space") / name, target / name)
+          PY
 
       - name: Install Hugging Face CLI
         run: |
-          curl -LsSf https://hf.co/cli/install.sh | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          python -m pip install 'huggingface_hub==2.3.0'
 
-      - name: Publish Space
+      # Exact obsolete paths verified in the current remote tree; preserve unrelated files.
+      - name: Publish explicitly approved synthetic Space
         env:
           HF_OIDC_RESOURCE: spaces/AlirezaBelal/iran-contact-data-pipeline
         run: |
-          hf upload AlirezaBelal/iran-contact-data-pipeline ./hf-space . --repo-type space --commit-message "Deploy from GitHub ${GITHUB_SHA::7}"
+          hf upload AlirezaBelal/iran-contact-data-pipeline "$RUNNER_TEMP/space-source" . --repo-type space --delete app.py --delete requirements.txt --commit-message "Approved source sync from GitHub ${GITHUB_SHA::7}"
