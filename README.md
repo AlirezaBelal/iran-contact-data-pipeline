@@ -121,14 +121,18 @@ is reviewable and works without a network connection after opening it locally.
 The Space metadata uses [Static HTML SDK](https://huggingface.co/docs/hub/spaces-sdks-static).
 Only `hf-space/README.md` and `hf-space/index.html` are staged for publication.
 No source package, contact datasets or environment files belong in that payload.
-The proposed sync workflow remains manual-only, requires confirmation on master
-and must not be dispatched without separate owner approval.
+The sync workflow remains manual-only and requires explicit approval on master.
+The first owner-approved Static Space publication succeeded on 2026-10-24;
+subsequent runs still require separate owner approval.
 
-These proposed files do **not** update the existing hosted Gradio service, its
-hardware or old caches. Its operational status must be verified separately before
-approved replacement. Hosting/access-log retention is not a zero-retention
-promise; do not send personal data to the existing service or its API. See
-[Space source notes](hf-space/README.md).
+The approved publication on 2026-10-24 deployed Static HTML to the Space and
+removed `app.py` and `requirements.txt` from the current remote file tree.
+[Publication workflow](https://github.com/AlirezaBelal/iran-contact-data-pipeline/actions/runs/40119605303)
+and [Hugging Face commit](https://huggingface.co/spaces/AlirezaBelal/iran-contact-data-pipeline/commit/067d1453b9d042c0a6873eb052524740956694cf)
+record that release. Current-tree removal does **not** establish deletion of earlier
+Git revisions, hosting caches, runtime files or access logs. The owner must assess
+historical retention independently; never upload real contact data to the public
+Space. See [Space source notes](hf-space/README.md).
 
 ## Independent downstream SMS use
 
