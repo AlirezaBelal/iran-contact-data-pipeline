@@ -147,6 +147,21 @@ class FileSafetyTests(unittest.TestCase):
         self.source.write_bytes(b"\xff\xfe")
         self.assertEqual(self.invoke()[0], 1)
 
+    def test_quoted_phone_with_newline_is_not_repaired_before_validation(self):
+        self.source.write_text(
+            "First Name,Last Name,Phone 1 - Value,Phone 2 - Value\n"
+            'Synthetic,Example,"09120000001\\n",09300000001\n'.replace(
+                "\\n", "\n"
+            ),
+            encoding="utf-8",
+        )
+        code, out, error = self.invoke()
+        self.assertEqual(code, 0, error)
+        cleaned = pd.read_csv(self.output, dtype=str)
+        self.assertEqual(cleaned.iloc[0]["selected_phone"], "09300000001")
+        self.assertIn("Invalid nonempty phone values: 1", out)
+        self.assertNotIn("09120000001", out + error)
+
     def test_input_limits_fail_before_output_creation(self):
         with patch("cli.MAX_INPUT_BYTES", 2):
             self.assertEqual(self.invoke()[0], 1)
@@ -201,6 +216,17 @@ class NormalizationContractTests(unittest.TestCase):
             ):
                 normalize_phone_number(number)
             self.assertNotIn(number, str(error.exception))
+
+    def test_control_only_phone_value_is_ignored_not_normalized(self):
+        data = pd.DataFrame([{
+            "First Name": "Synthetic",
+            "Last Name": "Test",
+            "Phone 1 - Value": "\n\t",
+            "Phone 2 - Value": "09120000002",
+        }])
+        cleaned, stats = ContactProcessor.clean_contacts_with_stats(data)
+        self.assertEqual(cleaned.iloc[0]["selected_phone"], "09120000002")
+        self.assertEqual(stats.invalid_phone_values, 0)
 
     def test_equivalent_forms_are_idempotent_for_synthetic_range(self):
         translation = str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹")

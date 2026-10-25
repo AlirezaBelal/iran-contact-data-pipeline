@@ -40,6 +40,25 @@ class PhoneNormalizationTests(unittest.TestCase):
                 with self.assertRaises(ContactNormalizationError):
                     normalize_phone_number(value)
 
+    def test_rejects_control_whitespace_and_oversized_phone_fields(self):
+        for value in (
+            "09121234567\n",
+            "\t09121234567",
+            "0912\r1234567",
+            "0912\v1234567",
+            "09121234567\u00a0",
+            " " * 65 + "09121234567",
+            "09121234567\x00",
+        ):
+            with self.subTest(label=repr(value)), self.assertRaises(
+                ContactNormalizationError
+            ):
+                normalize_phone_number(value)
+        self.assertEqual(
+            normalize_phone_number(" +98 (912) 123-4567 "),
+            "09121234567",
+        )
+
     def test_rejection_error_does_not_expose_raw_phone_value(self):
         raw_value = "invalid-private-contact-value"
 

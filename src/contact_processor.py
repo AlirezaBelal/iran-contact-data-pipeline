@@ -133,8 +133,11 @@ class ContactProcessor:
             if raw_value is None or pd.isna(raw_value):
                 continue
 
-            raw_phone = safe_str_conversion(raw_value)
-            if not raw_phone:
+            # Preserve the original phone cell for strict validation. In
+            # particular, safe_str_conversion().strip() would erase trailing
+            # newlines/tabs inside quoted CSV phone fields before validation.
+            raw_phone = str(raw_value)
+            if not raw_phone.strip():
                 continue
 
             try:
