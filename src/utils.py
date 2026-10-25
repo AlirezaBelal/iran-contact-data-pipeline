@@ -31,7 +31,9 @@ def normalize_phone_number(phone_number: str) -> str:
     # silently turn such a malformed contact into a plausible mobile number.
     if len(raw_value) > MAX_PHONE_FIELD_LENGTH:
         raise ContactNormalizationError("Invalid Iranian mobile number")
-    raw_value = raw_value.translate(DIGIT_TRANSLATION)
+    # ASCII edge spaces are ordinary phone formatting; unlike control
+    # whitespace, they may be trimmed without hiding malformed source data.
+    raw_value = raw_value.translate(DIGIT_TRANSLATION).strip(" ")
 
     if (
         not raw_value.strip()
