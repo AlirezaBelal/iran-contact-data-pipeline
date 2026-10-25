@@ -27,8 +27,10 @@ Python requirements, source package or backend is required on the hosting platfo
 
 Number format is not ownership, reachability or consent. Operator labels are
 heuristic and do not resolve portability. This page makes no zero-retention claim
-about hosting/access logs. Existing hosted Gradio code, dependencies and caches are
-separate from these proposed static files and are not changed by GitHub tests.
+about hosting/access logs. The first owner-approved deployment on 2026-10-24
+replaced the current Gradio source with this Static Space. The current remote
+tree no longer includes `app.py` or `requirements.txt`; historical revisions,
+hosting caches and logs are not verified as erased by publication or GitHub CI.
 
 [Local CLI quick start](https://github.com/AlirezaBelal/iran-contact-data-pipeline#safe-quick-start)
 
@@ -40,7 +42,7 @@ the obsolete runtime files observed in the remote tree; `.gitattributes` and
 unrelated files are preserved. There is no repository-wide deletion wildcard.
 This procedure runs only after separate owner authorization, never during CI.
 
-After a separately approved publication:
+After each separately approved publication:
 
 - Confirm remote README metadata has `sdk: static` and serves `index.html`.
 - Confirm the previous Gradio interface, CSV upload and contact-entry UI are absent.
