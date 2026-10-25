@@ -13,7 +13,8 @@ DIGIT_TRANSLATION = str.maketrans(
     "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩",
     "01234567890123456789",
 )
-ALLOWED_PHONE_CHARS_REGEX = re.compile(r"^[0-9+\s().-]+$")
+ALLOWED_PHONE_CHARS_REGEX = re.compile(r"[0-9+ ().-]+")
+MAX_PHONE_FIELD_LENGTH = 64
 
 
 def normalize_phone_number(phone_number: str) -> str:
@@ -24,11 +25,16 @@ def normalize_phone_number(phone_number: str) -> str:
     Common visual separators are tolerated, while embedded text or unsupported
     characters are rejected instead of being silently stripped away.
     """
-    raw_value = "" if phone_number is None else str(phone_number).strip()
+    raw_value = "" if phone_number is None else str(phone_number)
+    # Do not strip before validation: a quoted CSV cell can contain embedded
+    # or trailing CR/LF/TAB control characters. Whitespace stripping would
+    # silently turn such a malformed contact into a plausible mobile number.
+    if len(raw_value) > MAX_PHONE_FIELD_LENGTH:
+        raise ContactNormalizationError("Invalid Iranian mobile number")
     raw_value = raw_value.translate(DIGIT_TRANSLATION)
 
     if (
-        not raw_value
+        not raw_value.strip()
         or not ALLOWED_PHONE_CHARS_REGEX.fullmatch(raw_value)
         or raw_value.count("+") > 1
         or ("+" in raw_value and not raw_value.startswith("+"))

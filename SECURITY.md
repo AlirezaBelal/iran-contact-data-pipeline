@@ -40,6 +40,11 @@ about old hosted code/caches or the platform's access logs. Review the existing
 service separately; never upload real data for testing. Publication remains manual
 and requires separate owner approval.
 
+Phone normalization rejects quoted CSV phone fields with embedded or trailing
+control whitespace and values over 64 characters before any trimming. This
+avoids silently repairing malformed contact data into a plausible recipient.
+Tests use fictional values only and never transmit messages.
+
 Normalization does not establish ownership, active service or consent. Shared phone
 numbers across contact rows are retained; downstream senders must independently
 verify permission, honor exclusions and prevent duplicate submissions.

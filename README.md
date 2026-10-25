@@ -65,8 +65,11 @@ are not modified. Output contains personal data and must remain private.
 
 Supported shapes include `09…`, ten-digit `9…`, `989…`, `+989…`, `00989…`, Persian
 and Arabic digits, and common visual separators. Invalid lengths, landlines,
-embedded arbitrary text, unsupported characters and malformed plus signs are
+embedded arbitrary text, unsupported characters, control whitespace (including
+quoted CSV tabs/newlines), oversized values and malformed plus signs are
 rejected; an ambiguous number is not repaired into a plausible recipient.
+Ordinary ASCII spaces and visual separators are still accepted. Phone cells
+are validated **before** trimming so hidden controls cannot be discarded.
 
 Within each contact, equivalent normalized numbers are suppressed. Preference is
 **MCI → Irancell → Rightel → Other/Unknown**, then original phone-field order for
