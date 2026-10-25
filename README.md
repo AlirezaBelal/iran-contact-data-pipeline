@@ -154,7 +154,7 @@ SMS dependency, shared database or campaign execution in this repository.
 ```bash
 python -m unittest discover -s tests -v
 python -m pip install coverage ruff build twine pip-audit
-coverage run --source=src -m unittest discover -s tests
+coverage run --source=src,scripts -m unittest discover -s tests
 coverage report --show-missing --fail-under=80
 python benchmarks/benchmark_pipeline.py --rows 10000
 python -m build

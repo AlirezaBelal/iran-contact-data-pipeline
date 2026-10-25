@@ -33,7 +33,7 @@ outputs, their directories and backups; define retention and deletion procedures
 Atomic output publication prevents partial/truncated files, not all power-loss or
 host-compromise scenarios. Import untrusted CSV names as text in spreadsheets.
 
-The proposed demo is static HTML/CSS generated offline from a fixed synthetic
+The published demo is static HTML/CSS generated offline from a fixed synthetic
 fixture. It accepts no contact inputs and has no processing backend or Python runtime.
 It does not need Gradio, Pillow or GPU support. This does not establish anything
 about old hosted code/caches or the platform's access logs. Review the existing
@@ -57,5 +57,7 @@ reported advisories, including
 The resolution is removal of the unnecessary Python demo runtime, not an audit
 exception or unsupported dependency override. CI still audits the actual CLI
 runtime and distribution build/validation dependencies. Static files need no
-Python packages on the hosting platform. Existing hosted dependencies have not
-been inspected, replaced or purged by these source changes.
+Python packages on the hosting platform. The owner-approved publication on 2026-10-24 replaced the current Space with
+Static HTML and removed its Gradio runtime files; the public static SDK and
+current tree were rechecked on 2026-10-26. Historical revisions, caches, logs
+and prior runtime storage remain outside that verification.
