@@ -1,5 +1,5 @@
 # Distribution build and validation tools; no demo runtime dependencies.
-setuptools>=68
+setuptools>=84.2.1
 wheel
 build
 twine
