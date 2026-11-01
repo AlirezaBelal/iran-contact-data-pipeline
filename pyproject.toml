@@ -1,3 +1,8 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+# Keep Python 3.9 supported; setuptools 84.2.1 requires Python >=3.10.
+requires = [
+  "setuptools>=68,<83; python_version < '3.10'",
+  "setuptools>=84.2.1; python_version >= '3.10'",
+  "wheel",
+]
 build-backend = "setuptools.build_meta"
