@@ -161,6 +161,11 @@ python -m build
 python -m twine check dist/*
 ```
 
+Build dependencies also use Python-version markers: Python 3.9 resolves the
+compatible `setuptools>=68,<83` range, while Python 3.10+ uses
+`setuptools>=84.2.1`. Do not replace both branches with a single new
+minimum without first confirming the entire Python support matrix.
+
 All tests run on Python 3.9–3.14 without Gradio. Full coverage includes the core
 and generator using `--source=src,scripts`. CI checks committed HTML against fresh
 core output, Ruff correctness, dataset hygiene, runtime/build dependency advisories,
