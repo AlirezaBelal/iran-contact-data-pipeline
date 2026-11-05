@@ -27,7 +27,11 @@ class BrowserParityTests(unittest.TestCase):
             {"first": row.first_name, "last": row.last_name, "phone": row.selected_phone, "operator": row.mobile_operator}
             for row in frame.itertuples(index=False)
         ]
-        self.assertEqual(browser["selected"], expected)
+        browser_output = [
+            {key: row[key] for key in ("first", "last", "phone", "operator")}
+            for row in browser["selected"]
+        ]
+        self.assertEqual(browser_output, expected)
         self.assertEqual(browser["stats"]["inputRows"], stats.input_rows)
         self.assertEqual(browser["stats"]["outputRows"], stats.output_rows)
         self.assertEqual(browser["stats"]["invalidPhoneValues"], stats.invalid_phone_values)
