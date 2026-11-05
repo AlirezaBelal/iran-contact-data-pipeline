@@ -12,18 +12,26 @@ permissions:
 jobs:
   test:
     name: Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
 
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          - python-version: "3.9"
+            os: ubuntu-22.04
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      - name: Set up Node.js for browser demo parity
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -44,6 +52,9 @@ jobs:
 
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
+
+      - name: Test browser demo logic
+        run: node --test tests/browser_demo.test.cjs
 
       - name: Smoke test installed CLI
         run: |
@@ -71,6 +82,11 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      - name: Set up Node.js for browser parity test
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -163,3 +179,4 @@ jobs:
           python -m venv /tmp/contact-wheel-test
           /tmp/contact-wheel-test/bin/pip install dist/*.whl
           /tmp/contact-wheel-test/bin/contact-cleaner examples/contacts.example.csv /tmp/contact-wheel-output.csv
+
