@@ -176,3 +176,9 @@ processes real contacts. Install build tools with `pip install -r requirements-b
 The core retains `itertuples()` and does not add distributed processing or another
 DataFrame framework. [Security guidance](SECURITY.md) covers private reporting.
 MIT licensed; no CRM, telecom lookup, consent verification or messaging service is included.
+
+## Live browser demo
+
+[Open the GitHub Pages demo](https://alirezabelal.github.io/iran-contact-data-pipeline/)
+
+The browser tool normalizes and validates an authorized CSV locally, selects one preferred mobile value, reports quality and duplicates, and exports a normalized CSV. Files stay in this tab (maximum 1 MiB and 1,000 rows); the JavaScript rules are checked against the Python pipeline.
