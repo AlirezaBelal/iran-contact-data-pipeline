@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizePhone, operatorFor, processContacts, sample } = require('../docs/app.js');
+const { normalizePhone, operatorFor, processContacts, parseCsvContacts, buildOutputCsv, sample } = require('../docs/app.js');
 
 test('browser normalizer supports project formats and rejects unsafe ambiguity', () => {
   assert.equal(normalizePhone('۰۹۱۲ ۰۰۰ ۰۰۰۱'), '09120000001');
@@ -27,12 +27,31 @@ test('sample processing is deterministic and reports aggregate quality', () => {
   assert.deepEqual([stats.inputRows, stats.outputRows, stats.rejectedRows, stats.duplicateNumbersWithinRows, stats.repeatedSelectedNumbers], [5, 4, 1, 1, 1]);
 });
 
-test('browser demonstration has no arbitrary contact input or outbound APIs', () => {
+test('browser CSV parser supports quoted local records and enforces schema limits', () => {
+  const csv = '\uFEFFFirst Name,Last Name,Phone 1 - Value,Phone 2 - Value\r\n"Ari, Jr",Example,+989121234567,09121234567\r\nNima,Sample,not-a-number,09301234567\r\n';
+  const records = parseCsvContacts(csv);
+  const result = processContacts(records);
+  assert.deepEqual(records[0], { first: 'Ari, Jr', last: 'Example', phones: ['+989121234567', '09121234567'] });
+  assert.equal(result.selected[0].phone, '09121234567');
+  assert.equal(result.stats.duplicateNumbersWithinRows, 1);
+  assert.equal(result.stats.invalidPhoneValues, 1);
+  assert.throws(() => parseCsvContacts('First Name,Last Name\nAli,Sample\n'), /Phone 1 - Value/);
+  assert.throws(() => parseCsvContacts('First Name,Last Name,Phone 1 - Value\n"Ali,Sample,09121234567\n'), /unclosed quoted/);
+});
+
+test('normalized CSV export keeps formula-like names inert', () => {
+  const csv = buildOutputCsv([{ first: '=1+1', last: 'Sample', phone: '09121234567', operator: 'MCI' }]);
+  assert.match(csv, /'=1\+1/);
+  assert.match(csv, /selected_phone,mobile_operator/);
+});
+
+test('browser demonstration accepts only local CSV files and makes no outbound requests', () => {
   const fs = require('node:fs');
-  const page = fs.readFileSync('docs/index.html', 'utf8');
-  const app = fs.readFileSync('docs/app.js', 'utf8');
-  assert.doesNotMatch(page, /type=["']file|<form\b|<input\b/i);
+  const path = require('node:path');
+  const page = fs.readFileSync(path.join(__dirname, '../docs/index.html'), 'utf8');
+  const app = fs.readFileSync(path.join(__dirname, '../docs/app.js'), 'utf8');
+  assert.match(page, /type="file"[^>]+accept="\.csv,text\/csv"/);
+  assert.doesNotMatch(page, /type=["'](?:text|tel|number)["']/i);
   assert.match(page, /connect-src 'none'/);
   assert.doesNotMatch(app, /fetch\s*\(|XMLHttpRequest|WebSocket|sendBeacon|localStorage/);
 });
-
