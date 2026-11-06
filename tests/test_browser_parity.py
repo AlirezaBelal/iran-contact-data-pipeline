@@ -16,7 +16,7 @@ from contact_processor import ContactProcessor
 class BrowserParityTests(unittest.TestCase):
     def test_browser_sample_matches_authoritative_python_pipeline(self):
         script = "const d=require('./docs/app.js');process.stdout.write(JSON.stringify(d.processContacts(d.sample)))"
-        browser = json.loads(subprocess.check_output(["node", "-e", script], cwd=ROOT, text=True))
+        browser = json.loads(subprocess.check_output(["node", "-e", script], cwd=ROOT, text=True, encoding="utf-8"))
         records = [
             {"First Name": "کاربر", "Last Name": "نمونه", "Phone 1 - Value": "۰۹۱۲۰۰۰۰۰۰۱", "Phone 2 - Value": "+989120000001"},
             {"First Name": "Synthetic", "Last Name": "International", "Phone 1 - Value": "+989300000002", "Phone 2 - Value": "09120000003"},
@@ -51,7 +51,7 @@ class BrowserParityTests(unittest.TestCase):
             "Shared,Number,09121234567,,\r\n"
         )
         script = "const d=require('./docs/app.js');const rows=d.parseCsvContacts(process.argv[1]);process.stdout.write(JSON.stringify(d.processContacts(rows)))"
-        browser = json.loads(subprocess.check_output(["node", "-e", script, source], cwd=ROOT, text=True))
+        browser = json.loads(subprocess.check_output(["node", "-e", script, source], cwd=ROOT, text=True, encoding="utf-8"))
         records = list(csv.DictReader(io.StringIO(source)))
         frame, stats = ContactProcessor.clean_contacts_with_stats(pd.DataFrame(records))
         expected = [

@@ -55,3 +55,49 @@ test('browser demonstration accepts only local CSV files and makes no outbound r
   assert.match(page, /connect-src 'none'/);
   assert.doesNotMatch(app, /fetch\s*\(|XMLHttpRequest|WebSocket|sendBeacon|localStorage/);
 });
+
+test('strict phone boundaries reject trailing line controls and count Unicode characters', () => {
+  for (const suffix of ['\n','\r','\t','\u0000','\u2028','\u200f','\u00a0']) assert.equal(normalizePhone('09120000001'+suffix), null);
+  assert.equal(normalizePhone(' ۰۹۱۲ (۰۰۰) ۰۰۰۱ '), '09120000001');
+  assert.equal(normalizePhone('٩١٢٠٠٠٠٠٠١'), '09120000001');
+});
+
+test('CSV parser rejects inconsistent widths, duplicate columns and UTF-8 byte overflow', () => {
+  const head = 'First Name,Last Name,Phone 1 - Value\n';
+  for (const row of ['A,B','A,B,09120000001,','A,B,09120000001,X']) assert.throws(()=>parseCsvContacts(head+row), /column count/);
+  assert.equal(parseCsvContacts(head+',,\n').length, 1);
+  assert.equal(parseCsvContacts(head+'"",,\n').length, 1);
+  assert.throws(()=>parseCsvContacts('First Name,First Name,Last Name,Phone 1 - Value\nA,B,C,D'), /Duplicate/);
+  assert.throws(()=>parseCsvContacts(head+'ک'.repeat(524288)+',B,09120000001'), /1 MiB/);
+  assert.throws(()=>parseCsvContacts(head+'A,B,09120000001\n'.repeat(1001)), /1,000/);
+  assert.equal(parseCsvContacts(head+'A,B,09120000001\n'.repeat(1000)).length, 1000);
+});
+
+test('quoted multiline names survive; phone controls are rejected with valid fallback', () => {
+  const records = parseCsvContacts('First Name,Last Name,Phone 1 - Value,Phone 2 - Value\r\n"A\nB","C""D","09120000001\n",09300000002\r\n');
+  const result = processContacts(records);
+  assert.equal(result.selected[0].first, 'A\nB');
+  assert.equal(result.selected[0].last, 'C"D');
+  assert.equal(result.selected[0].phone, '09300000002');
+  assert.equal(result.stats.invalidPhoneValues, 1);
+});
+
+test('review filters include accepted warnings and rejected rows, without cross-row merging', () => {
+  const result=processContacts(sample);
+  assert.equal(result.stats.reviewRows, 4);
+  assert.ok(result.outcomes[1].reasons.includes('multiple'));
+  assert.ok(result.outcomes[2].reasons.includes('unknown'));
+  assert.ok(result.outcomes[3].reasons.includes('no-mobile'));
+  assert.ok(result.outcomes[4].reasons.includes('shared'));
+  assert.equal(result.selected.length,4);
+});
+
+test('exports are BOM CSV, quote names and protect leading-whitespace formulas', () => {
+  for (const value of ['=1+1','+1','-1','@SUM(A1)','  =1','\u0001=1','\t=1','\rtest','\ntest']) {
+    const output=buildOutputCsv([{first:value,last:'A,"B"',phone:'09120000001',operator:'MCI'}]);
+    assert.ok(output.startsWith('\uFEFFfirst_name,'));
+    assert.ok(output.includes("'"+value.replace(/"/g,'""')));
+    assert.ok(output.includes('"A,""B"""'));
+  }
+  assert.equal(buildOutputCsv([]), '\uFEFFfirst_name,last_name,selected_phone,mobile_operator\r\n');
+});

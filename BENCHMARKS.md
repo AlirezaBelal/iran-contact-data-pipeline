@@ -43,3 +43,7 @@ No timing threshold or change of DataFrame framework is justified by these resul
 The static preview is generated once at build time from five synthetic rows. It
 does not change the core algorithm or introduce a browser/backend processing
 benchmark; the measurements above still describe the instrumented Python core.
+
+The working GitHub Pages CSV tool is separate from the historical generated preview.
+Its browser limit remains 1 MiB / 1,000 records; no browser throughput claims are
+inferred from the Python measurements above. Browser tables paginate 25 rows.

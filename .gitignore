@@ -53,3 +53,9 @@ Thumbs.db
 htmlcov/
 .gradio/
 .contact-output-*.tmp
+
+# Synthetic-only browser QA tooling/evidence
+node_modules/
+qa-artifacts/
+playwright-report/
+test-results/
