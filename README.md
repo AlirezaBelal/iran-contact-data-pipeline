@@ -2,15 +2,40 @@
 
 [![CI](https://github.com/AlirezaBelal/iran-contact-data-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/AlirezaBelal/iran-contact-data-pipeline/actions/workflows/ci.yml)
 
-A lightweight local Python CLI for normalizing Iranian contact exports, inspecting
-up to four phone fields and selecting one mobile-number-shaped value per contact.
-It preserves Persian names and reports aggregate data-quality metrics.
+Prepare Iranian contact CSV files through a real **browser-local tool** or a local
+Python CLI. Normalize supported phone formats, select one preferred mobile value
+per accepted contact, and review aggregate data quality. No SMS is sent.
 
-**Number format is not ownership, reachability or consent. This tool sends no SMS.**
+## Option A — Browser-local CSV tool
+
+[Open CSV Tool](https://alirezabelal.github.io/iran-contact-data-pipeline/#workspace)
+· [Product website](https://alirezabelal.github.io/iran-contact-data-pipeline/)
+· [Portfolio overview](https://alirezabelal.github.io/work/lab/iran-contact-data-pipeline/)
+
+Choose an authorized UTF-8 CSV (BOM supported), then select the local processing
+button. Review accepted, rejected, and warning-bearing rows. Download all accepted
+records as normalized UTF-8-SIG CSV, or headers only when none are accepted.
+The Persian RTL workbench includes before/after comparison and 25-row pagination.
+The optional sample is fictional; this is a working tool, not a simulation.
+
+- Browser limits: **1 MiB and 1,000 records**. Required columns are listed below.
+- Files are read in this tab. No uploads, accounts, analytics, contact logging, or
+  persistent browser storage. CSP blocks outbound application connections.
+- Reset clears references and invalidates pending reads; closing the tab ends the
+  workspace. This is not a guarantee of browser/OS artifact erasure.
+- Downloading creates a local copy. Protect it, your inputs, backups, and screen.
+- Browser exports prefix formula-like name cells with an apostrophe, including
+  leading-whitespace formulas. Python preserves names. Import CSV as text.
+- Review flags include rejected rows, invalid values, multiple candidates, repeated
+  selected numbers, unnamed accepted records, and unknown prefix groups.
+- Shared numbers across rows are reported, **not merged**. Prefix groups do not
+  prove current carrier, reachability, ownership, or consent.
+
+## Option B — Local Python CLI
 
 ## Safe quick start
 
-Python 3.9–3.14 is checked in CI. Use only the bundled synthetic fixture to try it:
+Python 3.9â€“3.14 is checked in CI. Use only the bundled synthetic fixture to try it:
 
 ```bash
 git clone https://github.com/AlirezaBelal/iran-contact-data-pipeline.git
@@ -63,7 +88,7 @@ are not modified. Output contains personal data and must remain private.
 
 ### Normalization and selection
 
-Supported shapes include `09…`, ten-digit `9…`, `989…`, `+989…`, `00989…`, Persian
+Supported shapes include `09â€¦`, ten-digit `9â€¦`, `989â€¦`, `+989â€¦`, `00989â€¦`, Persian
 and Arabic digits, and common visual separators. Invalid lengths, landlines,
 embedded arbitrary text, unsupported characters, control whitespace (including
 quoted CSV tabs/newlines), oversized values and malformed plus signs are
@@ -72,7 +97,7 @@ Ordinary ASCII spaces and visual separators are still accepted. Phone cells
 are validated **before** trimming so hidden controls cannot be discarded.
 
 Within each contact, equivalent normalized numbers are suppressed. Preference is
-**MCI → Irancell → Rightel → Other/Unknown**, then original phone-field order for
+**MCI â†’ Irancell â†’ Rightel â†’ Other/Unknown**, then original phone-field order for
 ties. This is a transparent product rule, not a universal recommendation.
 
 Prefix classification is a conservative heuristic, not a current carrier registry.
@@ -106,9 +131,9 @@ inputs, outputs and backups when appropriate. Spreadsheet software can interpret
 untrusted names as formulas; import CSV columns as text rather than trusting a
 file extension. Names are preserved, not rewritten as a spreadsheet-safety policy.
 
-## Static synthetic demonstration
+## Historical Hugging Face Static Space
 
-The CLI is the product. `hf-space/index.html` is a self-contained HTML/CSS preview
+Separately from the working GitHub Pages browser tool, `hf-space/index.html` is a self-contained HTML/CSS preview
 of fixed synthetic input and its actual Python core output. It has no scripts,
 upload controls, contact textboxes, backend processing or user-generated downloads.
 Gradio and its Pillow dependency were removed because this presentation needs no
@@ -166,7 +191,7 @@ compatible `setuptools>=68,<83` range, while Python 3.10+ uses
 `setuptools>=84.2.1`. Do not replace both branches with a single new
 minimum without first confirming the entire Python support matrix.
 
-All tests run on Python 3.9–3.14 without Gradio. Full coverage includes the core
+All tests run on Python 3.9â€“3.14 without Gradio. Full coverage includes the core
 and generator using `--source=src,scripts`. CI checks committed HTML against fresh
 core output, Ruff correctness, dataset hygiene, runtime/build dependency advisories,
 wheel/sdist validity and an independently installed wheel. No CI job publishes or
@@ -177,8 +202,28 @@ The core retains `itertuples()` and does not add distributed processing or anoth
 DataFrame framework. [Security guidance](SECURITY.md) covers private reporting.
 MIT licensed; no CRM, telecom lookup, consent verification or messaging service is included.
 
-## Live browser demo
+## Browser implementation and verification
 
-[Open the GitHub Pages demo](https://alirezabelal.github.io/iran-contact-data-pipeline/)
+The standalone website and workbench live in `docs/`; Pages publishes only that
+folder. JavaScript has no runtime dependencies. The Python CLI remains separately
+supported with its existing atomic output and strict validation contract.
 
-The browser tool normalizes and validates an authorized CSV locally, selects one preferred mobile value, reports quality and duplicates, and exports a normalized CSV. Files stay in this tab (maximum 1 MiB and 1,000 rows); the JavaScript rules are checked against the Python pipeline.
+```bash
+node --test tests/browser_demo.test.cjs
+python -m unittest discover -s tests -v
+```
+
+Parity tests cover supported formats, Persian/Arabic digits, controls, malformed
+values, operator priority, duplicates, empty names, metrics, schema, and export.
+Core rules match on tested fixtures. Deliberate boundaries: Python's CLI allows
+50 MiB / 100,000 rows; browser allows 1 MiB / 1,000. CSV parsers are independent:
+the browser rejects quotes outside quoted fields more strictly than Python's CSV
+reader. Both require consistent row widths. Browser review labels/pagination are
+presentation features. Browser formula escaping differs from name-preserving CLI
+exports; neither should be opened blindly in spreadsheet software.
+
+The browser QA workflow tests Chromium at 320, 375, 390, 768, 1024, 1440, and
+1920px, real synthetic file import/export, failures, reset/read races, keyboard
+focus, RTL/table scrolling, axe WCAG checks, and a zero-external-request boundary.
+Synthetic-only screenshots and JSON results are retained as Actions artifacts for
+14 days. Production QA verifies the actual published release after merge.

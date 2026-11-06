@@ -1,0 +1,58 @@
+name: Product browser QA
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install isolated QA tooling
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1 @axe-core/playwright@4.10.2
+          npx playwright install --with-deps chromium
+      - name: Serve product and real CSV tool
+        run: python3 -m http.server 8765 --directory docs > /tmp/contact-site.log 2>&1 &
+      - name: Chromium seven-width import, export, privacy and visual checks
+        run: node tests/product-visual-qa.mjs
+      - name: Wait for exact production release
+        if: github.event_name != 'pull_request'
+        run: |
+          node --input-type=module <<'JS'
+          import {readFile} from 'node:fs/promises';
+          const paths=['index.html','style.css','app.js'];
+          const expected=await Promise.all(paths.map(p=>readFile('docs/'+p,'utf8')));
+          let ready=false;
+          for(let attempt=0;attempt<60;attempt++){
+            try{
+              const actual=await Promise.all(paths.map(async p=>{const r=await fetch('https://alirezabelal.github.io/iran-contact-data-pipeline/'+p+'?qa='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);return r.text();}));
+              if(actual.every((s,i)=>s.replace(/\r\n/g,'\n').replace(/^\uFEFF/,'')===expected[i].replace(/\r\n/g,'\n').replace(/^\uFEFF/,''))){ready=true;break;}
+            }catch{}
+            await new Promise(r=>setTimeout(r,10000));
+          }
+          if(!ready)throw new Error('Production does not match this release');
+          JS
+      - name: Verify real production tool in Chromium
+        if: github.event_name != 'pull_request'
+        env:
+          PRODUCT_URL: https://alirezabelal.github.io/iran-contact-data-pipeline/
+          QA_OUTPUT: qa-artifacts/production
+        run: node tests/product-visual-qa.mjs
+      - name: Save synthetic-only evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contact-browser-qa-${{ github.run_attempt }}
+          path: qa-artifacts/
+          retention-days: 14

@@ -12,9 +12,9 @@ const MAX_CSV_ROWS = 1_000;
 
 function normalizePhone(value) {
   let raw = String(value ?? "");
-  if (raw.length > 64) return null;
+  if ([...raw].length > 64) return null;
   raw = [...raw].map(char => digitMap.get(char) ?? char).join("").replace(/^ +| +$/g, "");
-  if (!raw.trim() || !/^[0-9+ ().-]+$/.test(raw) || (raw.match(/\+/g) || []).length > 1 || (raw.includes("+") && !raw.startsWith("+"))) return null;
+  if (!raw.trim() || /[^0-9+ ().-]/.test(raw) || (raw.match(/\+/g) || []).length > 1 || (raw.includes("+") && !raw.startsWith("+"))) return null;
   let digits = raw.replace(/\D/g, "");
   if (raw.startsWith("+") && !digits.startsWith("98")) return null;
   if (digits.startsWith("0098")) digits = `0${digits.slice(4)}`;
@@ -31,14 +31,14 @@ function operatorFor(phone) {
 }
 
 function parseCsvRows(text) {
-  if (typeof text !== "string" || text.length > MAX_CSV_CHARS) throw new Error("The CSV must be smaller than 1 MiB.");
+  if (typeof text !== "string" || new TextEncoder().encode(text).length > MAX_CSV_CHARS) throw new Error("The CSV must be smaller than 1 MiB.");
   const input = text.replace(/^\uFEFF/, "");
   if (!input.trim()) throw new Error("The CSV file is empty.");
   const rows = [];
   let row = [], cell = "", quoted = false, afterQuote = false, atCellStart = true;
   const pushRow = () => {
     row.push(cell);
-    if (row.some(value => value !== "")) rows.push(row);
+    if (row.length > 1 || cell !== "" || !atCellStart) rows.push(row);
     row = []; cell = ""; afterQuote = false; atCellStart = true;
     if (rows.length > MAX_CSV_ROWS + 1) throw new Error("The CSV can contain at most 1,000 contact rows.");
   };
@@ -75,7 +75,7 @@ function parseCsvContacts(text) {
   if (required.some(name => !headers.includes(name))) throw new Error("Include First Name, Last Name, and Phone 1 - Value columns from the project CSV format.");
   const phoneColumns = [1, 2, 3, 4].map(index => headers.indexOf(`Phone ${index} - Value`));
   return rows.map((values, rowIndex) => {
-    if (values.length > headers.length && values.slice(headers.length).some(value => value !== "")) throw new Error(`Row ${rowIndex + 2} has more values than the header.`);
+    if (values.length !== headers.length) throw new Error(`Record ${rowIndex + 1} has an inconsistent column count; match the header.`);
     const valueFor = name => { const index = headers.indexOf(name); return index < 0 ? "" : (values[index] ?? ""); };
     return {
       first: valueFor("First Name"),
@@ -85,34 +85,50 @@ function parseCsvContacts(text) {
   });
 }
 
+// Match Python str.strip whitespace for core parity (JS trim treats BOM differently).
+const pythonStrip = value => String(value ?? "").replace(/^[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+|[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+$/gu, "");
+
 function processContacts(records) {
   const selected = [], stats = { inputRows: records.length, outputRows: 0, invalidPhoneValues: 0, duplicateNumbersWithinRows: 0, rowsWithMultipleCandidates: 0, repeatedSelectedNumbers: 0, rowsWithoutNames: 0, selectedOperators: {} }, seenSelected = new Set();
+  const outcomes = [];
   records.forEach((record, sourceIndex) => {
     const candidates = [], seenInRow = new Set();
+    let invalid = 0, duplicates = 0;
     for (const raw of (record.phones || []).slice(0, 4)) {
-      if (raw == null || !String(raw).trim()) continue;
+      if (raw == null || !pythonStrip(raw)) continue;
       const normalized = normalizePhone(raw);
-      if (!normalized) { stats.invalidPhoneValues++; continue; }
-      if (seenInRow.has(normalized)) { stats.duplicateNumbersWithinRows++; continue; }
+      if (!normalized) { stats.invalidPhoneValues++; invalid++; continue; }
+      if (seenInRow.has(normalized)) { stats.duplicateNumbersWithinRows++; duplicates++; continue; }
       seenInRow.add(normalized); candidates.push({ number: normalized, operator: operatorFor(normalized) });
     }
     if (candidates.length > 1) stats.rowsWithMultipleCandidates++;
     candidates.sort((a, b) => { const ai = operatorPriority.indexOf(a.operator), bi = operatorPriority.indexOf(b.operator); return (ai < 0 ? 3 : ai) - (bi < 0 ? 3 : bi); });
     const chosen = candidates[0];
+    const unnamed = ![record.first, record.last].some(name => pythonStrip(name));
+    const shared = chosen ? seenSelected.has(chosen.number) : false;
+    const reasons = [];
+    if (!chosen) reasons.push("no-mobile");
+    if (invalid) reasons.push("invalid");
+    if (candidates.length > 1) reasons.push("multiple");
+    if (shared) reasons.push("shared");
+    if (chosen && unnamed) reasons.push("unnamed");
+    if (chosen?.operator === "Other/Unknown") reasons.push("unknown");
+    outcomes.push({ sourceIndex, reasons, invalid, duplicates, review: reasons.length > 0 });
     if (!chosen) return;
-    if (seenSelected.has(chosen.number)) stats.repeatedSelectedNumbers++;
+    if (shared) stats.repeatedSelectedNumbers++;
     seenSelected.add(chosen.number); stats.outputRows++;
     stats.selectedOperators[chosen.operator] = (stats.selectedOperators[chosen.operator] || 0) + 1;
-    if (![record.first, record.last].some(name => String(name || "").trim())) stats.rowsWithoutNames++;
-    selected.push({ first: String(record.first || "").trim(), last: String(record.last || "").trim(), phone: chosen.number, operator: chosen.operator, review: (record.phones || []).some(p => p && !normalizePhone(p)), sourceIndex });
+    if (unnamed) stats.rowsWithoutNames++;
+    selected.push({ first: pythonStrip(record.first), last: pythonStrip(record.last), phone: chosen.number, operator: chosen.operator, review: reasons.length > 0, sourceIndex });
   });
+  stats.reviewRows = outcomes.filter(row => row.review).length;
   stats.rejectedRows = stats.inputRows - stats.outputRows;
-  return { selected, stats };
+  return { selected, stats, outcomes };
 }
 
 function csvEscape(value) {
   let text = String(value ?? "");
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  if (/^[\s\u0000-\u001f]*[=+\-@]/u.test(text) || /^[\t\r\n]/.test(text)) text = `'${text}`;
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -125,63 +141,87 @@ function buildOutputCsv(selected) {
 if (typeof module !== "undefined") module.exports = { normalizePhone, operatorFor, processContacts, parseCsvRows, parseCsvContacts, buildOutputCsv, sample };
 
 if (typeof document !== "undefined") {
-  const sourceBody = document.querySelector("#source-rows"), resultBody = document.querySelector("#result-rows"), view = document.querySelector("#view"), run = document.querySelector("#run"), reset = document.querySelector("#reset");
-  const fileInput = document.querySelector("#contact-file"), runFile = document.querySelector("#run-file"), exportButton = document.querySelector("#export"), fileError = document.querySelector("#file-error");
-  const names = record => [record.first, record.last].filter(Boolean).join(" ") || "Unnamed record";
-  let fileRecords = null, lastSelected = [];
-  function sourceRow(record) {
-    const tr = document.createElement("tr"), name = document.createElement("td"), values = document.createElement("td");
-    name.textContent = names(record); values.className = "phone-values"; values.textContent = (record.phones || []).filter(Boolean).join(" · ") || "No phone values"; tr.append(name, values); return tr;
+  const $ = id => document.getElementById(id);
+  const fileInput = $("contact-file"), runFile = $("run-file"), exportButton = $("export"), view = $("view");
+  const metricKeys = { input: "inputRows", output: "outputRows", rejected: "rejectedRows", invalid: "invalidPhoneValues", duplicates: "duplicateNumbersWithinRows", shared: "repeatedSelectedNumbers", review: "reviewRows" };
+  const reasons = { "no-mobile": "بدون شماره معتبر", invalid: "مقدار نامعتبر", multiple: "چند گزینه معتبر", shared: "شماره تکراری بین ردیف‌ها", unnamed: "بدون نام", unknown: "گروه پیش‌شماره نامشخص" };
+  const count = new Intl.NumberFormat("fa-IR");
+  const PAGE_SIZE = 25;
+  let records = null, result = null, page = 0, generation = 0;
+  const status = text => { $("status").textContent = text; };
+  const cell = (tr, text, cls, dir) => { const td = document.createElement("td"); td.textContent = text; if (cls) td.className = cls; td.dir = dir || "auto"; tr.append(td); };
+  const name = record => [record.first, record.last].filter(Boolean).join(" ") || "بدون نام";
+  function clear() {
+    generation++; records = null; result = null; page = 0; fileInput.value = "";
+    runFile.disabled = true; exportButton.disabled = true; view.disabled = true; view.value = "all";
+    $("file-error").hidden = true; $("file-error").textContent = ""; fileInput.removeAttribute("aria-invalid");
+    $("source-rows").replaceChildren(); $("result-rows").replaceChildren();
+    for (const id of Object.keys(metricKeys)) $("metric-" + id).textContent = "—";
+    $("empty").hidden = false; $("empty").textContent = "فایل مجاز خود را انتخاب کنید یا نمونه ساختگی را امتحان کنید.";
+    $("row-count").textContent = "هنوز داده‌ای پردازش نشده است.";
+    $("previous").disabled = true; $("next").disabled = true;
+    $("workspace").setAttribute("aria-busy", "false");
   }
-  function render(records, sourceLabel) {
-    const { selected, stats } = processContacts(records); lastSelected = selected;
-    for (const [id, value] of [["input", stats.inputRows], ["output", stats.outputRows], ["rejected", stats.rejectedRows], ["duplicates", stats.duplicateNumbersWithinRows], ["shared", stats.repeatedSelectedNumbers]]) document.querySelector(`#metric-${id}`).textContent = value;
-    const acceptedIndexes = new Set(selected.map(row => row.sourceIndex));
-    const byIndex = new Map(selected.map(row => [row.sourceIndex, row]));
-    const shown = records.map((record, i) => ({ record, result: byIndex.get(i), accepted: acceptedIndexes.has(i) })).filter(item => view.value === "all" || (view.value === "accepted" ? item.accepted : !item.accepted));
-    sourceBody.replaceChildren(...records.map(sourceRow));
-    resultBody.replaceChildren(...shown.map(({ record, result }) => {
-      const tr = document.createElement("tr"), name = document.createElement("td"), phone = document.createElement("td"), op = document.createElement("td"), status = document.createElement("td");
-      name.textContent = names(record); phone.textContent = result?.phone || "—"; phone.className = result ? "phone-values" : "muted"; op.textContent = result?.operator || "—"; op.className = "muted";
-      const pill = document.createElement("span"); pill.className = `pill${result ? "" : " review"}`; pill.textContent = result ? (result.review ? "Accepted · review extra value" : "Accepted") : "Needs review"; status.append(pill); tr.append(name, phone, op, status); return tr;
-    }));
-    document.querySelector("#empty").hidden = shown.length > 0;
-    document.querySelector("#row-count").textContent = `${shown.length} ${shown.length === 1 ? "record" : "records"} shown`;
-    document.querySelector("#status").textContent = sourceLabel;
-    exportButton.disabled = selected.length === 0;
+  function render() {
+    if (!result || !records) return;
+    const selectedByIndex = new Map(result.selected.map(row => [row.sourceIndex, row]));
+    const shown = result.outcomes.filter(row => view.value === "all" || (view.value === "accepted" ? selectedByIndex.has(row.sourceIndex) : view.value === "rejected" ? !selectedByIndex.has(row.sourceIndex) : row.review));
+    page = Math.max(0, Math.min(page, Math.ceil(shown.length / PAGE_SIZE) - 1));
+    const visible = shown.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+    $("source-rows").replaceChildren(); $("result-rows").replaceChildren();
+    for (const outcome of visible) {
+      const record = records[outcome.sourceIndex], selected = selectedByIndex.get(outcome.sourceIndex);
+      const source = document.createElement("tr"), after = document.createElement("tr");
+      cell(source, count.format(outcome.sourceIndex + 1)); cell(source, name(record)); cell(source, record.phones.filter(Boolean).join(" · ") || "—", "phone-values", "ltr");
+      cell(after, count.format(outcome.sourceIndex + 1)); cell(after, name(record)); cell(after, selected?.phone || "—", "phone-values", "ltr"); cell(after, selected?.operator || "—", "operator", "ltr");
+      cell(after, selected ? "پذیرفته" : "رد شده", selected ? "accepted" : "rejected");
+      cell(after, outcome.reasons.map(reason => reasons[reason]).join("؛ ") || "بدون هشدار");
+      $("source-rows").append(source); $("result-rows").append(after);
+    }
+    $("empty").hidden = shown.length > 0; $("empty").textContent = "در این فیلتر ردیفی وجود ندارد. فیلتر دیگری انتخاب کنید.";
+    $("row-count").textContent = `${count.format(shown.length)} ردیف در این فیلتر · صفحه ${count.format(page + 1)} از ${count.format(Math.max(1, Math.ceil(shown.length / PAGE_SIZE)))}`;
+    $("previous").disabled = page === 0; $("next").disabled = (page + 1) * PAGE_SIZE >= shown.length;
   }
-  function showError(message) { fileError.textContent = message; fileError.hidden = false; }
+  function process(label) {
+    result = processContacts(records); page = 0; view.value = "all"; view.disabled = false;
+    for (const [id, key] of Object.entries(metricKeys)) $("metric-" + id).textContent = count.format(result.stats[key]);
+    exportButton.disabled = false; render(); status(label);
+  }
   fileInput.addEventListener("change", async () => {
-    fileError.hidden = true; fileError.textContent = ""; fileRecords = null; runFile.disabled = true;
-    lastSelected = []; exportButton.disabled = true; view.value = "all"; resultBody.replaceChildren(); sourceBody.replaceChildren(); document.querySelector("#empty").hidden = true;
-    for (const id of ["input", "output", "rejected", "duplicates", "shared"]) document.querySelector(`#metric-${id}`).textContent = "—";
-    const file = fileInput.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_CSV_CHARS) { showError("Choose a CSV file smaller than 1 MiB."); document.querySelector("#status").textContent = "File rejected · size limit"; return; }
-    document.querySelector("#status").textContent = "Reading the selected file in this tab…";
+    const file = fileInput.files?.[0]; clear();
+    if (!file) { status("فایلی انتخاب نشده است."); return; }
+    const ticket = generation;
+    status("در حال خواندن فایل در همین تب…"); $("workspace").setAttribute("aria-busy", "true");
     try {
-      fileRecords = parseCsvContacts(await file.text());
-      if (fileRecords.length > MAX_CSV_ROWS) throw new Error("The CSV can contain at most 1,000 contact rows.");
-      runFile.disabled = false; sourceBody.replaceChildren(...fileRecords.map(sourceRow));
-      document.querySelector("#status").textContent = `Loaded ${fileRecords.length} rows in this tab · ready to process`;
-      document.querySelector("#row-count").textContent = "File parsed; choose Process file locally";
-    } catch (error) { fileRecords = null; showError(error instanceof Error ? error.message : "The file could not be read."); document.querySelector("#status").textContent = "File not processed"; }
+      if (file.size > MAX_CSV_CHARS) throw new Error("Choose a CSV file no larger than 1 MiB.");
+      let buffer;
+      try { buffer = await file.arrayBuffer(); } catch { throw new Error("Unable to read this file. Choose the CSV again or use another local copy."); }
+      if (ticket !== generation) return;
+      let text;
+      try { text = new TextDecoder("utf-8", { fatal: true }).decode(buffer); }
+      catch { throw new Error("Save the CSV using UTF-8 encoding and try again."); }
+      records = parseCsvContacts(text); runFile.disabled = false;
+      $("empty").textContent = "فایل معتبر است. برای نمایش نتیجه، پردازش محلی را شروع کنید.";
+      status(`${count.format(records.length)} ردیف آماده پردازش محلی است. هیچ فایلی آپلود نشده است.`);
+    } catch (error) {
+      if (ticket !== generation) return;
+      records = null; fileInput.setAttribute("aria-invalid", "true");
+      $("file-error").textContent = error instanceof Error && !(error instanceof TypeError) ? error.message : "Unable to read this file. Choose a UTF-8 CSV and try again.";
+      $("file-error").hidden = false; status("فایل پذیرفته نشد. راهنمای خطا را بررسی کنید.");
+    } finally { if (ticket === generation) $("workspace").setAttribute("aria-busy", "false"); }
   });
-  run.addEventListener("click", () => { fileInput.value = ""; fileRecords = null; runFile.disabled = true; render(sample, "Processed 5 synthetic sample records locally"); });
-  runFile.addEventListener("click", () => { if (!fileRecords) return; view.value = "all"; render(fileRecords, `Processed ${fileRecords.length} rows locally in this tab · no upload or storage`); });
-  view.addEventListener("change", () => {
-    const current = fileRecords || sample;
-    if (lastSelected.length || document.querySelector("#metric-input").textContent !== "—") render(current, document.querySelector("#status").textContent);
-  });
+  $("run").addEventListener("click", () => { clear(); records = sample; process("نمونه ساختگی پردازش شد. این ردیف‌ها متعلق به افراد واقعی نیستند."); });
+  runFile.addEventListener("click", () => { if (records) process("پردازش محلی کامل شد. خروجی و هشدارها را پیش از دانلود بررسی کنید."); });
+  view.addEventListener("change", () => { page = 0; render(); });
+  $("previous").addEventListener("click", () => { page--; render(); });
+  $("next").addEventListener("click", () => { page++; render(); });
   exportButton.addEventListener("click", () => {
-    if (!lastSelected.length) return;
-    const blob = new Blob([buildOutputCsv(lastSelected)], { type: "text/csv;charset=utf-8" });
-    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "normalized-contacts.csv"; link.click();
-    setTimeout(() => URL.revokeObjectURL(link.href), 0);
+    if (!result) return;
+    const url = URL.createObjectURL(new Blob([buildOutputCsv(result.selected)], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a"); link.href = url; link.download = "normalized-contacts.csv"; document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status("دانلود آماده شد. خروجی یک نسخه محلی از داده است؛ آن را در محل امن نگه دارید.");
   });
-  reset.addEventListener("click", () => {
-    fileInput.value = ""; fileRecords = null; lastSelected = []; runFile.disabled = true; exportButton.disabled = true; view.value = "all"; fileError.hidden = true; fileError.textContent = "";
-    for (const id of ["input", "output", "rejected", "duplicates", "shared"]) document.querySelector(`#metric-${id}`).textContent = "—";
-    sourceBody.replaceChildren(); resultBody.replaceChildren(); document.querySelector("#empty").hidden = true; document.querySelector("#status").textContent = "Ready · no file has been uploaded or stored"; document.querySelector("#row-count").textContent = "Choose a file or run the synthetic sample"; reset.focus();
-  });
+  $("reset").addEventListener("click", () => { clear(); status("فضای کار پاک شد. برای شروع فایل جدیدی انتخاب کنید."); $("reset").focus(); });
+  clear();
 }

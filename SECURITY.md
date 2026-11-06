@@ -33,7 +33,7 @@ outputs, their directories and backups; define retention and deletion procedures
 Atomic output publication prevents partial/truncated files, not all power-loss or
 host-compromise scenarios. Import untrusted CSV names as text in spreadsheets.
 
-The published demo is static HTML/CSS generated offline from a fixed synthetic
+The historical Hugging Face preview is static HTML/CSS generated offline from a fixed synthetic
 fixture. It accepts no contact inputs and has no processing backend or Python runtime.
 It does not need Gradio, Pillow or GPU support. This does not establish anything
 about old hosted code/caches or the platform's access logs. Review the existing
@@ -61,3 +61,22 @@ Python packages on the hosting platform. The owner-approved publication on 2026-
 Static HTML and removed its Gradio runtime files; the public static SDK and
 current tree were rechecked on 2026-10-26. Historical revisions, caches, logs
 and prior runtime storage remain outside that verification.
+
+## GitHub Pages browser-local tool
+
+`docs/` is the real CSV tool, independent of the historical Static Space. It reads
+selected files in tab memory with a 1 MiB / 1,000-row limit and fatal UTF-8 decoding.
+No dataset upload, accounts, remote processing, contact logging, analytics, or
+persistent contact storage is implemented. A restrictive CSP blocks connections.
+All untrusted values are rendered with textContent. Errors omit contact values.
+Reset clears the workspace and invalidates pending reads; memory handling cannot
+guarantee erasure of all browser/OS artifacts. Downloaded CSV files remain local
+copies requiring appropriate retention and access controls.
+
+Browser exports prefix formula-like names with an apostrophe (including formulas
+behind leading whitespace). Python intentionally preserves names. Treat either
+CSV as untrusted and import columns as text; spreadsheet behavior varies.
+
+Browser and Python core normalization/selection rules use synthetic parity tests.
+Their input limits and parser implementation details differ as documented in the
+README. Neither implementation verifies consent or current carrier. No SMS is sent.
