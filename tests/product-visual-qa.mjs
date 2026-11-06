@@ -45,7 +45,7 @@ try{for(const width of [320,375,390,768,1024,1440,1920]){
  await page.evaluate(()=>{const original=File.prototype.arrayBuffer;File.prototype.arrayBuffer=function(){return new Promise(resolve=>setTimeout(()=>original.call(this).then(resolve),150));};});
  await page.locator('#contact-file').setInputFiles({name:'fictional-race.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});await page.locator('#reset').click();await page.waitForTimeout(250);assert(await page.locator('#run-file').isDisabled());assert.equal(await page.locator('#result-rows tr').count(),0);
  if(width===375||width===1440){
-  await page.locator('#run').click();await page.locator('#workspace').screenshot({path:out+'/workbench-'+width+'.png'});
+  await page.locator('#run').click();await page.locator('.scroll').evaluateAll(xs=>xs.forEach(x=>x.scrollLeft=0));await page.locator('#workspace').screenshot({path:out+'/workbench-'+width+'.png'});
   // 1,000-row input is paginated, not rendered as an unbounded DOM.
   await page.locator('#contact-file').setInputFiles({name:'fictional-boundary.csv',mimeType:'text/csv',buffer:Buffer.from(header+'Synthetic,Boundary,09120000001,\r\n'.repeat(1000))});await page.waitForFunction(()=>!document.querySelector('#run-file').disabled);await page.locator('#run-file').click();assert.equal(await page.locator('#result-rows tr').count(),25);await page.locator('#next').click();assert.match(await page.locator('#row-count').textContent(),/۲/);
  }

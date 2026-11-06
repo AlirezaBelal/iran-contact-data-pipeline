@@ -43,6 +43,7 @@ class ExtendedParityTests(unittest.TestCase):
             {'first': 'No', 'last': 'Mobile', 'phones': ['bad', '02100000000']},
             {'first': '=1+1', 'last': 'Quoted, "Name"', 'phones': ['09200000003', '09200000004']},
             {'first': 'Order', 'last': 'Unknown', 'phones': ['09880000001', '09880000002']},
+            {'first': '\u001cName\u0085', 'last': '\ufeff', 'phones': ['\u001c', '\ufeff', '09120000005']},
         ]
         actual = browser('d.processContacts(data)', records)
         frame, stats = ContactProcessor.clean_contacts_with_stats(pd.DataFrame([

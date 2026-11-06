@@ -4,3 +4,13 @@
 @media(max-width:900px){.hero-grid{gap:32px}.summary{grid-template-columns:repeat(4,minmax(0,1fr))}.information{gap:40px}.steps{grid-template-columns:repeat(2,minmax(0,1fr))}.nav{align-items:start}nav{gap:16px}.section-heading{gap:24px}.specimen-top{padding:14px}.sample-number{font-size:1.25rem}}
 @media(max-width:650px){.wrap{width:calc(100% - 32px)}.nav{flex-direction:column;gap:18px;padding-block:16px}nav{width:100%;justify-content:space-between;gap:10px}nav a{font-size:.8125rem}.hero{padding-block:36px}.hero-grid{grid-template-columns:1fr;gap:32px}h1{font-size:2.25rem;letter-spacing:-.025em}.specimen{box-shadow:6px 6px 0 #dfe6f2}.sample-number{font-size:1.5rem}.section-heading{display:block}.section-heading>p{margin-top:16px}.workbench-section{padding-block:36px}.tool-heading{align-items:start;flex-direction:column;padding:18px}.import-grid{grid-template-columns:1fr;padding:18px;gap:20px}.status-line{padding:14px 18px}.summary{grid-template-columns:repeat(2,minmax(0,1fr));padding:18px;gap:16px}.summary div:last-child{grid-column:1/-1}.summary dd{font-size:1.375rem}.results-toolbar{padding-inline:18px}.tool-hint{padding-inline:18px}.scroll{margin-inline:18px}.source-details{margin-inline:18px}.source-details .scroll{margin:0}.pagination{padding-inline:18px}.steps{gap:20px}.soft-section{padding-block:36px}.information{grid-template-columns:1fr;gap:24px;padding-block:40px}.information h2{font-size:1.75rem}.final-cta .wrap{align-items:start;flex-direction:column;gap:24px}footer{align-items:start;flex-direction:column;gap:16px}.architecture{min-height:100px}pre{padding:16px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}}
+
+/* Keep source values and the architecture legible inside bounded scroll regions. */
+.diagram-scroll{overflow:auto;max-width:100%;border:1px solid #b9c6da;border-radius:8px;background:#fff}
+.diagram-scroll .architecture{border:0;border-radius:0;min-width:800px;min-height:0}
+.diagram-hint{font-size:.8125rem;margin:12px 0 0}
+.source-details table{table-layout:auto}
+.source-details th:first-child{width:55px}
+.source-details th:nth-child(2){width:30%}
+.source-details th:nth-child(3){width:auto}
+.source-details td.phone-values{white-space:normal;overflow-wrap:anywhere}

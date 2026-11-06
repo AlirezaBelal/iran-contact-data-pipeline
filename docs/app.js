@@ -85,6 +85,9 @@ function parseCsvContacts(text) {
   });
 }
 
+// Match Python str.strip whitespace for core parity (JS trim treats BOM differently).
+const pythonStrip = value => String(value ?? "").replace(/^[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+|[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+$/gu, "");
+
 function processContacts(records) {
   const selected = [], stats = { inputRows: records.length, outputRows: 0, invalidPhoneValues: 0, duplicateNumbersWithinRows: 0, rowsWithMultipleCandidates: 0, repeatedSelectedNumbers: 0, rowsWithoutNames: 0, selectedOperators: {} }, seenSelected = new Set();
   const outcomes = [];
@@ -92,7 +95,7 @@ function processContacts(records) {
     const candidates = [], seenInRow = new Set();
     let invalid = 0, duplicates = 0;
     for (const raw of (record.phones || []).slice(0, 4)) {
-      if (raw == null || !String(raw).trim()) continue;
+      if (raw == null || !pythonStrip(raw)) continue;
       const normalized = normalizePhone(raw);
       if (!normalized) { stats.invalidPhoneValues++; invalid++; continue; }
       if (seenInRow.has(normalized)) { stats.duplicateNumbersWithinRows++; duplicates++; continue; }
@@ -101,7 +104,7 @@ function processContacts(records) {
     if (candidates.length > 1) stats.rowsWithMultipleCandidates++;
     candidates.sort((a, b) => { const ai = operatorPriority.indexOf(a.operator), bi = operatorPriority.indexOf(b.operator); return (ai < 0 ? 3 : ai) - (bi < 0 ? 3 : bi); });
     const chosen = candidates[0];
-    const unnamed = ![record.first, record.last].some(name => String(name || "").trim());
+    const unnamed = ![record.first, record.last].some(name => pythonStrip(name));
     const shared = chosen ? seenSelected.has(chosen.number) : false;
     const reasons = [];
     if (!chosen) reasons.push("no-mobile");
@@ -116,7 +119,7 @@ function processContacts(records) {
     seenSelected.add(chosen.number); stats.outputRows++;
     stats.selectedOperators[chosen.operator] = (stats.selectedOperators[chosen.operator] || 0) + 1;
     if (unnamed) stats.rowsWithoutNames++;
-    selected.push({ first: String(record.first || "").trim(), last: String(record.last || "").trim(), phone: chosen.number, operator: chosen.operator, review: reasons.length > 0, sourceIndex });
+    selected.push({ first: pythonStrip(record.first), last: pythonStrip(record.last), phone: chosen.number, operator: chosen.operator, review: reasons.length > 0, sourceIndex });
   });
   stats.reviewRows = outcomes.filter(row => row.review).length;
   stats.rejectedRows = stats.inputRows - stats.outputRows;
@@ -191,7 +194,8 @@ if (typeof document !== "undefined") {
     status("در حال خواندن فایل در همین تب…"); $("workspace").setAttribute("aria-busy", "true");
     try {
       if (file.size > MAX_CSV_CHARS) throw new Error("Choose a CSV file no larger than 1 MiB.");
-      const buffer = await file.arrayBuffer();
+      let buffer;
+      try { buffer = await file.arrayBuffer(); } catch { throw new Error("Unable to read this file. Choose the CSV again or use another local copy."); }
       if (ticket !== generation) return;
       let text;
       try { text = new TextDecoder("utf-8", { fatal: true }).decode(buffer); }
