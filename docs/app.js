@@ -151,8 +151,9 @@ if (typeof document !== "undefined") {
   const status = text => { $("status").textContent = text; };
   const cell = (tr, text, cls, dir) => { const td = document.createElement("td"); td.textContent = text; if (cls) td.className = cls; td.dir = dir || "auto"; tr.append(td); };
   const name = record => [record.first, record.last].filter(Boolean).join(" ") || "بدون نام";
-  function clear() {
-    generation++; records = null; result = null; page = 0; fileInput.value = "";
+  function clear(keepInput = false) {
+    generation++; records = null; result = null; page = 0;
+    if (!keepInput) fileInput.value = "";
     runFile.disabled = true; exportButton.disabled = true; view.disabled = true; view.value = "all";
     $("file-error").hidden = true; $("file-error").textContent = ""; fileInput.removeAttribute("aria-invalid");
     $("source-rows").replaceChildren(); $("result-rows").replaceChildren();
@@ -188,7 +189,7 @@ if (typeof document !== "undefined") {
     exportButton.disabled = false; render(); status(label);
   }
   fileInput.addEventListener("change", async () => {
-    const file = fileInput.files?.[0]; clear();
+    const file = fileInput.files?.[0]; clear(true);
     if (!file) { status("فایلی انتخاب نشده است."); return; }
     const ticket = generation;
     status("در حال خواندن فایل در همین تب…"); $("workspace").setAttribute("aria-busy", "true");

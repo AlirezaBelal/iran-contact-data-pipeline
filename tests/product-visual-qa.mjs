@@ -24,7 +24,7 @@ try{for(const width of [320,375,390,768,1024,1440,1920]){
  await page.locator('#reset').click();assert.equal(await page.locator('#result-rows tr').count(),0);assert(await page.locator('#export').isDisabled());
  await page.locator('#contact-file').setInputFiles({name:'fictional.csv',mimeType:'text/csv',buffer:Buffer.from('\uFEFF'+csv)});
  await page.locator('#run-file').waitFor({state:'visible'});await page.waitForFunction(()=>!document.querySelector('#run-file').disabled);
- await page.locator('#run-file').click();assert.equal(await page.locator('#result-rows tr').count(),3);
+ await page.locator('#run-file').click();assert.equal(await page.locator('#result-rows tr').count(),3);assert.match(await page.locator('#contact-file').inputValue(),/fictional\.csv$/,'selected file remains visible');
  assert.equal(await page.locator('#metric-output').textContent(),'۲');assert.equal(await page.locator('#metric-rejected').textContent(),'۱');
  const downloadPromise=page.waitForEvent('download');await page.locator('#export').click();const download=await downloadPromise;
  const bytes=await readFile(await download.path());assert.deepEqual([...bytes.subarray(0,3)],[239,187,191]);const output=bytes.toString('utf8');assert.match(output,/selected_phone,mobile_operator/);assert.match(output,/"نمونه, ساختگی",Example,09120000001,MCI/);assert.doesNotMatch(output,/Synthetic,Rejected/);
@@ -37,13 +37,13 @@ try{for(const width of [320,375,390,768,1024,1440,1920]){
  for(const buffer of [Buffer.from(header+'A,B'),Buffer.from(header+'"broken'),Buffer.from([255,254,0,0]),Buffer.alloc(1048577,65)]){
   await page.locator('#contact-file').setInputFiles({name:'fictional-invalid.csv',mimeType:'text/csv',buffer});await page.locator('#file-error').waitFor({state:'visible'});assert(await page.locator('#run-file').isDisabled());assert(await page.locator('#export').isDisabled());
  }
- await page.locator('#run').click();assert(await page.locator('#file-error').isHidden());
+ await page.locator('#run').click();assert(await page.locator('#file-error').isHidden());assert.equal(await page.locator('#contact-file').inputValue(),'');
  // All-rejected input can still export the documented header-only schema.
  await page.locator('#contact-file').setInputFiles({name:'fictional-rejected.csv',mimeType:'text/csv',buffer:Buffer.from(header+'Synthetic,Rejected,bad,\r\n')});await page.waitForFunction(()=>!document.querySelector('#run-file').disabled);await page.locator('#run-file').click();
  const d2=page.waitForEvent('download');await page.locator('#export').click();assert.equal((await readFile(await(await d2).path())).toString('utf8'),'\uFEFFfirst_name,last_name,selected_phone,mobile_operator\r\n');
  // Race: reset after a read starts; stale promises cannot restore private data.
  await page.evaluate(()=>{const original=File.prototype.arrayBuffer;File.prototype.arrayBuffer=function(){return new Promise(resolve=>setTimeout(()=>original.call(this).then(resolve),150));};});
- await page.locator('#contact-file').setInputFiles({name:'fictional-race.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});await page.locator('#reset').click();await page.waitForTimeout(250);assert(await page.locator('#run-file').isDisabled());assert.equal(await page.locator('#result-rows tr').count(),0);
+ await page.locator('#contact-file').setInputFiles({name:'fictional-race.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});await page.locator('#reset').click();await page.waitForTimeout(250);assert(await page.locator('#run-file').isDisabled());assert.equal(await page.locator('#result-rows tr').count(),0);assert.equal(await page.locator('#contact-file').inputValue(),'');
  if(width===375||width===1440){
   await page.locator('#run').click();await page.locator('.scroll').evaluateAll(xs=>xs.forEach(x=>x.scrollLeft=0));await page.locator('#workspace').screenshot({path:out+'/workbench-'+width+'.png'});
   // 1,000-row input is paginated, not rendered as an unbounded DOM.
