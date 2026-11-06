@@ -10,7 +10,7 @@ permissions:
 jobs:
   chromium:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,7 +34,7 @@ jobs:
           const paths=['index.html','style.css','app.js'];
           const expected=await Promise.all(paths.map(p=>readFile('docs/'+p,'utf8')));
           let ready=false;
-          for(let attempt=0;attempt<60;attempt++){
+          for(let attempt=0;attempt<120;attempt++){
             try{
               const actual=await Promise.all(paths.map(async p=>{const r=await fetch('https://alirezabelal.github.io/iran-contact-data-pipeline/'+p+'?qa='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);return r.text();}));
               if(actual.every((s,i)=>s.replace(/\r\n/g,'\n').replace(/^\uFEFF/,'')===expected[i].replace(/\r\n/g,'\n').replace(/^\uFEFF/,''))){ready=true;break;}
